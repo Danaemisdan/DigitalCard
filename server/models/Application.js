@@ -40,6 +40,10 @@ const applicationSchema = mongoose.Schema({
         type: String,
         required: false,
     },
+    pdfData: {
+        type: Buffer,
+        required: false
+    }
 }, {
     timestamps: true,
 });

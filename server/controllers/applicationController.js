@@ -144,9 +144,25 @@ const createApplication = async (req, res) => {
 
         await application.save();
 
+        // --- 3. Pre-Generate PDF immediately (Performance Optimization) ---
+        // This makes the "Download" button instant later.
+        if (application.applicationType === 'Free' || application.paymentStatus === 'Paid') {
+            try {
+                console.log('Pre-generating PDF for application:', application._id);
+                const pdfBuffer = await generateCardPDF(application);
+                application.pdfData = pdfBuffer;
+                await application.save();
+                console.log('PDF Pre-generated and saved.');
+            } catch (pdfErr) {
+                console.error('Background PDF Generation Failed:', pdfErr);
+                // Non-blocking: User can still generate it on-demand later via the download endpoint fallback
+            }
+        }
+
         res.status(201).json({
             success: true,
             data: application,
+            applicationId: application._id, // Explicitly return ID for frontend
             message: 'Application submitted successfully',
             verificationDetails: {
                 aadhaar: aadhaarVerified,
@@ -191,23 +207,34 @@ const downloadCard = async (req, res) => {
         if (application.paymentStatus !== 'Paid') {
             return res.status(400).json({ message: 'Payment required to download card.' });
         }
-        if (application.verificationStatus === 'Failed') {
-            return res.status(400).json({ message: 'Verification failed. Cannot generate card.' });
+
+        // Return stored PDF if available (INSTANT DOWNLOAD)
+        if (application.pdfData) {
+            res.set({
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `attachment; filename=bharat-peak-card-${application.uniqueCode || 'card'}.pdf`,
+                'Content-Length': application.pdfData.length,
+            });
+            return res.send(application.pdfData);
         }
 
-        // Generate PDF
+        // Fallback: Generate if not found (e.g. old records) - Slower
         const pdfBuffer = await generateCardPDF(application);
+
+        // Save for next time
+        application.pdfData = pdfBuffer;
+        await application.save();
 
         res.set({
             'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename=bharat-peak-card-${application._id}.pdf`,
+            'Content-Disposition': `attachment; filename=bharat-peak-card-${application.uniqueCode || 'card'}.pdf`,
             'Content-Length': pdfBuffer.length,
         });
 
         res.send(pdfBuffer);
 
     } catch (error) {
-        console.error(error);
+        console.error("PDF Download Error", error);
         res.status(500).json({ message: 'Error generating PDF' });
     }
 };
