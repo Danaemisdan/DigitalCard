@@ -19,6 +19,7 @@ function App() {
           <Route path="apply/premier" element={<PremierForm />} />
           <Route path="apply/free" element={<FreeForm />} />
         </Route>
+        <Route path="/admin" element={<AdminLogin />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
       </Routes>
