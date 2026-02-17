@@ -4,8 +4,8 @@ import { ArrowRight, Lock, LayoutDashboard } from 'lucide-react';
 import Logo from '../components/Logo';
 
 const AdminLogin = () => {
-    const [email, setEmail] = useState('admin@cardsys.com');
-    const [password, setPassword] = useState('admin123');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const navigate = useNavigate();
 
     const handleLogin = (e) => {
