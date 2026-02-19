@@ -6,14 +6,12 @@ const sharp = require('sharp');
 const preprocessImage = async (filePath) => {
     try {
         console.log('Preprocessing image for better OCR...');
-        // Upscale, Grayscale, Threshold, and Sharpen
         const buffer = await sharp(filePath)
-            .resize({ width: 1800, withoutEnlargement: false }) // Reduced from 2500 to prevent VPS OOM
+            .resize({ width: 1800, withoutEnlargement: false })
             .grayscale()
-            .normalize() // Stretch contrast range
-            .gamma(2.0) // Darken midtones to strengthen faint lines (like the crossbar in '4') without erasing them
-            .sharpen() // Sharpen edges
-            // .threshold(160) // REMOVED: Thresholding strips faint details. Tesseract handles grayscale better.
+            .normalize()
+            .gamma(2.0)
+            .sharpen()
             .toBuffer();
         return buffer;
     } catch (error) {
@@ -26,84 +24,117 @@ const verifyDocument = async (filePath, type) => {
     try {
         console.log(`Starting OCR for ${type} at ${filePath}`);
 
-        // Use preprocessed image buffer
         const imageSource = await preprocessImage(filePath);
 
-        // Allow ONLY digits for Aadhaar extraction to prevent 'I' vs '1' or 'A' vs '4' confusion if possible
-        // But we need names too. So we run general English.
-        const { data: { text } } = await Tesseract.recognize(imageSource, 'eng');
-        console.log(`OCR Text for ${type}:`, text.substring(0, 100) + '...');
+        // Run OCR in BOTH English and Telugu to handle regional language Aadhaar cards
+        // (e.g. cards that show "ఆధార్" instead of "AADHAAR")
+        const [engResult, telResult] = await Promise.all([
+            Tesseract.recognize(imageSource, 'eng'),
+            type === 'aadhaar'
+                ? Tesseract.recognize(imageSource, 'tel').catch(() => ({ data: { text: '' } }))
+                : Promise.resolve({ data: { text: '' } }),
+        ]);
 
-        const cleanText = text.toLowerCase();
+        const combinedText = `${engResult.data.text} ${telResult.data.text}`;
+        console.log(`OCR (eng) for ${type}:`, engResult.data.text.substring(0, 200));
+
+        const cleanText = combinedText.toLowerCase();
         let isVerified = false;
         let extractedData = {};
 
         if (type === 'aadhaar') {
-            // Extract 12 digit number
-            // Regex improved: \b ensures word boundary, preventing partial matches
+            // --- 12-digit Aadhaar number ---
             const aadhaarMatch = cleanText.match(/\b\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/);
             if (aadhaarMatch) {
-                console.log('High Accuracy Mode: Extracted Aadhaar Number:', aadhaarMatch[0]);
+                console.log('Extracted Aadhaar Number:', aadhaarMatch[0]);
                 extractedData.aadhaarNumber = aadhaarMatch[0].replace(/[\s-]/g, ' ');
             }
 
-            // Extract Gender
-            if (cleanText.match(/female|mahila/)) {
+            // --- Gender ---
+            if (cleanText.match(/female|mahila|స్త్రీ|பெண்|महिला/)) {
                 extractedData.gender = 'Female';
-            } else if (cleanText.match(/male|purush/)) {
+            } else if (cleanText.match(/male|purush|పురుషుడు|ஆண்|पुरुष/)) {
                 extractedData.gender = 'Male';
             }
 
-            // Extract Name Heuristics (Same as before, but on cleaner text)
-            const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+            // --- Name extraction ---
+            const lines = engResult.data.text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
 
             // Strategy 1: Line before DOB
-            const dobIndex = lines.findIndex(l => l.toLowerCase().includes('dob') || l.toLowerCase().includes('year of birth') || l.match(/\d{2}\/\d{2}\/\d{4}/));
+            const dobIndex = lines.findIndex(l =>
+                l.toLowerCase().includes('dob') ||
+                l.toLowerCase().includes('year of birth') ||
+                l.match(/\d{2}\/\d{2}\/\d{4}/) ||
+                l.match(/DOB:\s*\d/)
+            );
             if (dobIndex > 0) {
                 let candidate = lines[dobIndex - 1];
                 if (candidate.match(/[a-zA-Z]{3,}/)) {
                     extractedData.name = candidate;
                 } else if (dobIndex > 1) {
                     candidate = lines[dobIndex - 2];
-                    if (candidate.match(/[a-zA-Z]{3,}/)) {
-                        extractedData.name = candidate;
-                    }
+                    if (candidate.match(/[a-zA-Z]{3,}/)) extractedData.name = candidate;
                 }
             }
 
-            // Strategy 2: "Govt of India" header logic
+            // Strategy 2: Line after "GOVERNMENT OF INDIA" header
             if (!extractedData.name) {
                 for (let i = 0; i < lines.length; i++) {
                     const lineBlob = lines[i].toLowerCase();
                     if (lineBlob.includes('government of india') || lineBlob.includes('govt of india')) {
-                        if (lines[i + 1] && lines[i + 1].match(/^[A-Z\s\.]+$/) && lines[i + 1].length > 3) {
-                            extractedData.name = lines[i + 1];
-                        } else if (lines[i + 2] && lines[i + 2].match(/^[A-Z\s\.]+$/) && !lines[i + 2].match(/\d/) && lines[i + 2].length > 3) {
-                            extractedData.name = lines[i + 2];
+                        for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+                            if (lines[j].match(/^[A-Z][a-zA-Z\s\.]{2,}$/) && !lines[j].match(/\d/)) {
+                                extractedData.name = lines[j];
+                                break;
+                            }
                         }
                     }
                 }
             }
 
-            // Cleanup
+            // Cleanup name
             if (extractedData.name) {
                 extractedData.name = extractedData.name.replace(/[^a-zA-Z\s\.]/g, '').trim();
-                console.log("High Accuracy Mode: Extracted Name:", extractedData.name);
+                console.log('Extracted Name:', extractedData.name);
             }
 
-            // Keywords: "government of india", "mera aadhaar", or 12 digit number extraction logic
-            if (cleanText.includes('government of india') || cleanText.includes('aadhaar') || extractedData.aadhaarNumber) {
+            // --- VERIFICATION LOGIC ---
+            // A card is valid Aadhaar if:
+            //   (a) it has a 12-digit number (the most reliable signal), OR
+            //   (b) it contains known English/regional keywords
+            const hasAadhaarNumber = !!aadhaarMatch;
+            const hasEnglishKeyword =
+                cleanText.includes('government of india') ||
+                cleanText.includes('aadhaar') ||
+                cleanText.includes('unique identification') ||
+                cleanText.includes('uid');
+            // Telugu: ఆధార్ → Tesseract may render as random chars, check English portion only
+            // The 12-digit number is the strongest signal
+
+            if (hasAadhaarNumber || hasEnglishKeyword) {
                 isVerified = true;
             } else {
-                console.log('REJECTING: Aadhaar keywords and numbers missing.');
+                console.log('REJECTING: No Aadhaar number or keywords found. Text sample:', cleanText.substring(0, 300));
                 isVerified = false;
             }
+
         } else if (type === 'pan') {
-            // PAN logic
-            if (cleanText.includes('income tax') || cleanText.includes('permanent account number') || cleanText.match(/[a-z]{5}\d{4}[a-z]{1}/)) {
+            // PAN: 5 letters + 4 digits + 1 letter (e.g. QDVPS4950R)
+            const panMatch = cleanText.match(/\b[a-z]{5}\d{4}[a-z]{1}\b/i);
+            if (panMatch) {
+                console.log('Extracted PAN Number:', panMatch[0].toUpperCase());
+                extractedData.panNumber = panMatch[0].toUpperCase();
+            }
+
+            if (
+                cleanText.includes('income tax') ||
+                cleanText.includes('permanent account number') ||
+                cleanText.includes('pan') ||
+                panMatch
+            ) {
                 isVerified = true;
             } else {
-                console.log('REJECTING: PAN keywords and pattern missing.');
+                console.log('REJECTING: PAN keywords and pattern missing. Text sample:', cleanText.substring(0, 300));
                 isVerified = false;
             }
         }

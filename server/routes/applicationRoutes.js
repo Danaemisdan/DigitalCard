@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createApplication, getApplicationById, downloadCard, getAllApplications, extractOcrData } = require('../controllers/applicationController');
+const { createApplication, getApplicationById, downloadCard, getAllApplications, extractOcrData, deleteApplication } = require('../controllers/applicationController');
 const upload = require('../middleware/uploadMiddleware');
 
 // Fields to upload
@@ -19,5 +19,6 @@ router.post('/extract-ocr', upload.fields([{ name: 'document', maxCount: 1 }]), 
 
 router.get('/:id', getApplicationById);
 router.get('/:id/download', downloadCard);
+router.delete('/:id', deleteApplication);
 
 module.exports = router;

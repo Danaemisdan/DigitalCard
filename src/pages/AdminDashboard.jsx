@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-    Download, Eye, Search, Filter, Calendar, Loader2,
-    TrendingUp, Users, CreditCard, IndianRupee, RefreshCw
+    Download, Eye, Search, Filter, Loader2,
+    TrendingUp, Users, CreditCard, IndianRupee, RefreshCw,
+    Trash2, FileDown, X, AlertTriangle, CalendarDays
 } from 'lucide-react';
 import {
     AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -27,7 +28,6 @@ const pct = (now, prev) => {
 
 const isPositive = (str) => !str.startsWith('-');
 
-// Group apps by day (last 30 days)
 const groupByDay = (apps) => {
     const map = {};
     const now = new Date();
@@ -53,7 +53,6 @@ const groupByDay = (apps) => {
     return Object.values(map);
 };
 
-// Split apps: this month vs last month
 const splitByMonth = (apps) => {
     const now = new Date();
     const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -66,6 +65,30 @@ const splitByMonth = (apps) => {
     return { thisMonth, lastMonth };
 };
 
+const exportToCSV = (apps, filename = 'applications.csv') => {
+    const headers = ['Name', 'Email', 'Mobile', 'City', 'State', 'Type', 'Status', 'Verification', 'Referral Code', 'Applied On'];
+    const rows = apps.map(a => [
+        a.personalDetails?.fullName || '',
+        a.personalDetails?.email || '',
+        a.personalDetails?.mobile || '',
+        a.personalDetails?.city || '',
+        a.personalDetails?.state || '',
+        a.applicationType || '',
+        a.status || '',
+        a.verificationStatus || '',
+        a.referralCode || '',
+        new Date(a.createdAt).toLocaleString('en-IN'),
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+};
+
 // ---- MAIN ----
 const AdminDashboard = () => {
     const [applications, setApplications] = useState([]);
@@ -73,6 +96,10 @@ const AdminDashboard = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [typeFilter, setTypeFilter] = useState('All');
     const [activeTab, setActiveTab] = useState('overview');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [deleteTarget, setDeleteTarget] = useState(null); // {id, name}
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => { fetchApplications(); }, []);
 
@@ -90,49 +117,60 @@ const AdminDashboard = () => {
 
     const handleDownload = (id) => window.open(`${API_URL}/api/applications/${id}/download`, '_blank');
 
+    const handleDeleteConfirm = async () => {
+        if (!deleteTarget) return;
+        setDeleting(true);
+        try {
+            const res = await fetch(`${API_URL}/api/applications/${deleteTarget.id}`, { method: 'DELETE' });
+            if (res.ok) {
+                setApplications(prev => prev.filter(a => a._id !== deleteTarget.id));
+            }
+        } catch (err) {
+            console.error('Delete failed', err);
+        } finally {
+            setDeleting(false);
+            setDeleteTarget(null);
+        }
+    };
+
     const filteredApps = useMemo(() => applications.filter(app => {
         const name = app.personalDetails?.fullName || '';
         const email = app.personalDetails?.email || '';
         const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             email.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesType = typeFilter === 'All' || app.applicationType === typeFilter;
-        return matchesSearch && matchesType;
-    }), [applications, searchTerm, typeFilter]);
+        const appDate = new Date(app.createdAt);
+        const matchesFrom = !dateFrom || appDate >= new Date(dateFrom);
+        const matchesTo = !dateTo || appDate <= new Date(dateTo + 'T23:59:59');
+        return matchesSearch && matchesType && matchesFrom && matchesTo;
+    }), [applications, searchTerm, typeFilter, dateFrom, dateTo]);
+
+    const hasDateFilter = dateFrom || dateTo;
+
+    const clearDateFilter = () => { setDateFrom(''); setDateTo(''); };
 
     const stats = useMemo(() => {
         const { thisMonth, lastMonth } = splitByMonth(applications);
-
         const total = applications.length;
-        const totalPrev = lastMonth.length;
-
         const premium = applications.filter(a => a.applicationType === 'Premium').length;
-        const premiumPrev = lastMonth.filter(a => a.applicationType === 'Premium').length;
-
         const free = applications.filter(a => a.applicationType === 'Free').length;
-        const freePrev = lastMonth.filter(a => a.applicationType === 'Free').length;
-
         const revenue = getRevenue(applications);
-        const revenuePrev = getRevenue(lastMonth);
-
         const verified = applications.filter(a => a.verificationStatus === 'Passed').length;
-        const conversionRate = total > 0 ? Math.round((verified / total) * 100) : 0;
-
         return {
-            total, totalTrend: pct(thisMonth.length, totalPrev),
-            premium, premiumTrend: pct(thisMonth.filter(a => a.applicationType === 'Premium').length, premiumPrev),
-            free, freeTrend: pct(thisMonth.filter(a => a.applicationType === 'Free').length, freePrev),
-            revenue, revenueTrend: pct(getRevenue(thisMonth), revenuePrev),
-            conversionRate,
+            total, totalTrend: pct(thisMonth.length, lastMonth.length),
+            premium, premiumTrend: pct(thisMonth.filter(a => a.applicationType === 'Premium').length, lastMonth.filter(a => a.applicationType === 'Premium').length),
+            free, freeTrend: pct(thisMonth.filter(a => a.applicationType === 'Free').length, lastMonth.filter(a => a.applicationType === 'Free').length),
+            revenue, revenueTrend: pct(getRevenue(thisMonth), getRevenue(lastMonth)),
+            conversionRate: total > 0 ? Math.round((verified / total) * 100) : 0,
+            pending: applications.filter(a => a.status === 'Pending').length,
         };
     }, [applications]);
 
     const chartData = useMemo(() => groupByDay(applications), [applications]);
-
     const pieData = useMemo(() => [
         { name: 'Free', value: stats.free },
         { name: 'Premium', value: stats.premium },
     ].filter(d => d.value > 0), [stats]);
-
     const statusData = useMemo(() => {
         const counts = {};
         applications.forEach(a => { counts[a.status] = (counts[a.status] || 0) + 1; });
@@ -151,65 +189,75 @@ const AdminDashboard = () => {
         <div className="bg-slate-50 min-h-screen p-6 md:p-8">
             <div className="max-w-7xl mx-auto">
 
+                {/* Delete Confirmation Modal */}
+                {deleteTarget && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+                        <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-md w-full">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-red-50 rounded-xl">
+                                    <AlertTriangle className="h-5 w-5 text-red-500" />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-900">Delete Application</h3>
+                            </div>
+                            <p className="text-slate-600 mb-6">
+                                Are you sure you want to delete the application for <span className="font-bold text-slate-900">{deleteTarget.name}</span>? This action cannot be undone and will also remove all uploaded documents.
+                            </p>
+                            <div className="flex gap-3 justify-end">
+                                <button
+                                    onClick={() => setDeleteTarget(null)}
+                                    className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleDeleteConfirm}
+                                    disabled={deleting}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-all disabled:opacity-60"
+                                >
+                                    {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                    {deleting ? 'Deleting…' : 'Delete'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                     <div>
                         <h1 className="text-3xl font-display font-bold text-slate-900">Dashboard</h1>
                         <p className="text-slate-500 mt-1">Real-time overview of card applications and revenue.</p>
                     </div>
-                    <button
-                        onClick={fetchApplications}
-                        className="flex items-center gap-2 bg-brand-teal text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-teal-900 shadow-lg shadow-brand-teal/20 transition-all"
-                    >
-                        <RefreshCw className="h-4 w-4" /> Refresh Data
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => exportToCSV(filteredApps, `applications-export-${Date.now()}.csv`)}
+                            className="flex items-center gap-2 bg-white text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-slate-50 shadow-sm transition-all"
+                            title="Export current filtered view as CSV"
+                        >
+                            <FileDown className="h-4 w-4" /> Export CSV
+                        </button>
+                        <button
+                            onClick={fetchApplications}
+                            className="flex items-center gap-2 bg-brand-teal text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-teal-900 shadow-lg shadow-brand-teal/20 transition-all"
+                        >
+                            <RefreshCw className="h-4 w-4" /> Refresh
+                        </button>
+                    </div>
                 </div>
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-                    <StatCard
-                        icon={<Users className="h-5 w-5 text-brand-teal" />}
-                        title="Total Applications"
-                        value={stats.total}
-                        trend={stats.totalTrend}
-                        iconBg="bg-teal-50"
-                    />
-                    <StatCard
-                        icon={<CreditCard className="h-5 w-5 text-indigo-500" />}
-                        title="Premium Users"
-                        value={stats.premium}
-                        trend={stats.premiumTrend}
-                        iconBg="bg-indigo-50"
-                        valueColor="text-indigo-600"
-                    />
-                    <StatCard
-                        icon={<Users className="h-5 w-5 text-emerald-500" />}
-                        title="Free Users"
-                        value={stats.free}
-                        trend={stats.freeTrend}
-                        iconBg="bg-emerald-50"
-                    />
-                    <StatCard
-                        icon={<IndianRupee className="h-5 w-5 text-brand-orange" />}
-                        title="Total Revenue"
-                        value={`₹${stats.revenue.toLocaleString('en-IN')}`}
-                        trend={stats.revenueTrend}
-                        iconBg="bg-orange-50"
-                        valueColor="text-brand-orange"
-                    />
+                    <StatCard icon={<Users className="h-5 w-5 text-brand-teal" />} title="Total Applications" value={stats.total} trend={stats.totalTrend} iconBg="bg-teal-50" />
+                    <StatCard icon={<CreditCard className="h-5 w-5 text-indigo-500" />} title="Premium Users" value={stats.premium} trend={stats.premiumTrend} iconBg="bg-indigo-50" valueColor="text-indigo-600" />
+                    <StatCard icon={<Users className="h-5 w-5 text-emerald-500" />} title="Free Users" value={stats.free} trend={stats.freeTrend} iconBg="bg-emerald-50" />
+                    <StatCard icon={<IndianRupee className="h-5 w-5 text-brand-orange" />} title="Total Revenue" value={`₹${stats.revenue.toLocaleString('en-IN')}`} trend={stats.revenueTrend} iconBg="bg-orange-50" valueColor="text-brand-orange" />
                 </div>
 
                 {/* Tabs */}
                 <div className="flex gap-1 bg-white border border-slate-100 rounded-xl p-1 w-fit mb-6 shadow-sm">
                     {['overview', 'applications'].map(tab => (
-                        <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all capitalize ${activeTab === tab
-                                    ? 'bg-brand-teal text-white shadow'
-                                    : 'text-slate-500 hover:text-slate-800'
-                                }`}
-                        >
+                        <button key={tab} onClick={() => setActiveTab(tab)}
+                            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all capitalize ${activeTab === tab ? 'bg-brand-teal text-white shadow' : 'text-slate-500 hover:text-slate-800'}`}>
                             {tab}
                         </button>
                     ))}
@@ -221,9 +269,7 @@ const AdminDashboard = () => {
                         <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100">
                             <h2 className="text-lg font-bold text-slate-800 mb-1">Applications Over Time</h2>
                             <p className="text-sm text-slate-400 mb-6">Last 30 days</p>
-                            {applications.length === 0 ? (
-                                <EmptyChart message="No application data yet." />
-                            ) : (
+                            {applications.length === 0 ? <EmptyChart message="No application data yet." /> : (
                                 <ResponsiveContainer width="100%" height={280}>
                                     <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                                         <defs>
@@ -237,23 +283,9 @@ const AdminDashboard = () => {
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                        <XAxis
-                                            dataKey="date"
-                                            tick={{ fontSize: 11, fill: '#94a3b8' }}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            interval={4}
-                                        />
-                                        <YAxis
-                                            tick={{ fontSize: 11, fill: '#94a3b8' }}
-                                            tickLine={false}
-                                            axisLine={false}
-                                            allowDecimals={false}
-                                        />
-                                        <Tooltip
-                                            contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgb(0,0,0,0.08)' }}
-                                            labelStyle={{ fontWeight: 700, color: '#1e293b' }}
-                                        />
+                                        <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} interval={4} />
+                                        <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                                        <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgb(0,0,0,0.08)' }} labelStyle={{ fontWeight: 700, color: '#1e293b' }} />
                                         <Legend />
                                         <Area type="monotone" dataKey="free" name="Free" stroke="#0d9488" strokeWidth={2} fill="url(#colorFree)" dot={false} activeDot={{ r: 5 }} />
                                         <Area type="monotone" dataKey="premium" name="Premium" stroke="#f97316" strokeWidth={2} fill="url(#colorPremium)" dot={false} activeDot={{ r: 5 }} />
@@ -262,37 +294,26 @@ const AdminDashboard = () => {
                             )}
                         </div>
 
-                        {/* Bottom row charts */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                            {/* Revenue Chart */}
                             <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100">
                                 <h2 className="text-lg font-bold text-slate-800 mb-1">Daily Revenue</h2>
                                 <p className="text-sm text-slate-400 mb-6">₹ from Premium card sales</p>
-                                {applications.length === 0 || stats.revenue === 0 ? (
-                                    <EmptyChart message="No revenue recorded yet. Revenue is generated from paid Premium applications." />
-                                ) : (
+                                {stats.revenue === 0 ? <EmptyChart message="No revenue recorded yet. Revenue is generated from paid Premium applications." /> : (
                                     <ResponsiveContainer width="100%" height={220}>
                                         <BarChart data={chartData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                                             <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} interval={4} />
                                             <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} tickFormatter={v => `₹${v}`} />
-                                            <Tooltip
-                                                contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }}
-                                                formatter={v => [`₹${v}`, 'Revenue']}
-                                            />
+                                            <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0' }} formatter={v => [`₹${v}`, 'Revenue']} />
                                             <Bar dataKey="revenue" name="Revenue" radius={[4, 4, 0, 0]} fill="#f97316" />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 )}
                             </div>
-
-                            {/* Plan split */}
                             <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100">
                                 <h2 className="text-lg font-bold text-slate-800 mb-1">Plan Split</h2>
                                 <p className="text-sm text-slate-400 mb-4">Free vs Premium</p>
-                                {pieData.length === 0 ? (
-                                    <EmptyChart message="No data yet." />
-                                ) : (
+                                {pieData.length === 0 ? <EmptyChart message="No data yet." /> : (
                                     <>
                                         <ResponsiveContainer width="100%" height={160}>
                                             <PieChart>
@@ -318,13 +339,10 @@ const AdminDashboard = () => {
                             </div>
                         </div>
 
-                        {/* Status Breakdown */}
                         <div className="bg-white rounded-2xl p-6 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100">
                             <h2 className="text-lg font-bold text-slate-800 mb-1">Application Status Breakdown</h2>
                             <p className="text-sm text-slate-400 mb-6">Current status distribution</p>
-                            {statusData.length === 0 ? (
-                                <EmptyChart message="No status data yet." />
-                            ) : (
+                            {statusData.length === 0 ? <EmptyChart message="No status data yet." /> : (
                                 <ResponsiveContainer width="100%" height={200}>
                                     <BarChart layout="vertical" data={statusData} margin={{ top: 5, right: 20, left: 60, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
@@ -339,12 +357,11 @@ const AdminDashboard = () => {
                             )}
                         </div>
 
-                        {/* Summary Metrics */}
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             <MiniStat label="Verification Rate" value={`${stats.conversionRate}%`} />
                             <MiniStat label="Premium Users" value={stats.premium} />
-                            <MiniStat label="Avg. Revenue/App" value={stats.total > 0 ? `₹${Math.round(stats.revenue / stats.total)}` : '₹0'} />
-                            <MiniStat label="Pending Review" value={applications.filter(a => a.status === 'Pending').length} />
+                            <MiniStat label="Avg Revenue/App" value={stats.total > 0 ? `₹${Math.round(stats.revenue / stats.total)}` : '₹0'} />
+                            <MiniStat label="Pending Review" value={stats.pending} />
                         </div>
                     </div>
                 )}
@@ -352,30 +369,77 @@ const AdminDashboard = () => {
                 {activeTab === 'applications' && (
                     <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 overflow-hidden">
                         {/* Toolbar */}
-                        <div className="p-5 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                            <div className="relative w-full md:w-96">
-                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <Search className="h-4 w-4 text-slate-400" />
+                        <div className="p-5 border-b border-slate-100 space-y-3">
+                            <div className="flex flex-col md:flex-row gap-3 items-start md:items-center justify-between">
+                                {/* Search */}
+                                <div className="relative w-full md:w-80">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Search className="h-4 w-4 text-slate-400" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name or email…"
+                                        className="block w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-brand-teal focus:border-brand-teal transition-all"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {/* Type filter */}
+                                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                                        <Filter className="h-4 w-4 text-slate-500" />
+                                        <select
+                                            className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 p-0 pr-4"
+                                            value={typeFilter}
+                                            onChange={(e) => setTypeFilter(e.target.value)}
+                                        >
+                                            <option value="All">All Types</option>
+                                            <option value="Premium">Premium</option>
+                                            <option value="Free">Free</option>
+                                        </select>
+                                    </div>
+                                    {/* Export CSV */}
+                                    <button
+                                        onClick={() => exportToCSV(filteredApps, `applications-${new Date().toISOString().slice(0, 10)}.csv`)}
+                                        className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-100 transition-all"
+                                    >
+                                        <FileDown className="h-4 w-4" />
+                                        Export CSV ({filteredApps.length})
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Date Range Filter */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex items-center gap-1.5 text-sm text-slate-500 font-medium">
+                                    <CalendarDays className="h-4 w-4" />
+                                    Date Range:
                                 </div>
                                 <input
-                                    type="text"
-                                    placeholder="Search applicants..."
-                                    className="block w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-brand-teal focus:border-brand-teal transition-all"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    type="date"
+                                    value={dateFrom}
+                                    onChange={e => setDateFrom(e.target.value)}
+                                    className="border border-slate-200 rounded-xl px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-1 focus:ring-brand-teal focus:border-brand-teal focus:bg-white transition-all"
                                 />
-                            </div>
-                            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
-                                <Filter className="h-4 w-4 text-slate-500" />
-                                <select
-                                    className="bg-transparent border-none text-sm font-medium text-slate-700 focus:ring-0 p-0 pr-4"
-                                    value={typeFilter}
-                                    onChange={(e) => setTypeFilter(e.target.value)}
-                                >
-                                    <option value="All">All Types</option>
-                                    <option value="Premium">Premium</option>
-                                    <option value="Free">Free</option>
-                                </select>
+                                <span className="text-slate-400 text-sm">to</span>
+                                <input
+                                    type="date"
+                                    value={dateTo}
+                                    min={dateFrom}
+                                    onChange={e => setDateTo(e.target.value)}
+                                    className="border border-slate-200 rounded-xl px-3 py-2 text-sm bg-slate-50 focus:outline-none focus:ring-1 focus:ring-brand-teal focus:border-brand-teal focus:bg-white transition-all"
+                                />
+                                {hasDateFilter && (
+                                    <button
+                                        onClick={clearDateFilter}
+                                        className="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-700 bg-red-50 border border-red-100 px-2.5 py-1.5 rounded-lg transition-all"
+                                    >
+                                        <X className="h-3.5 w-3.5" /> Clear
+                                    </button>
+                                )}
+                                {hasDateFilter && (
+                                    <span className="text-xs text-slate-400 ml-1">{filteredApps.length} results</span>
+                                )}
                             </div>
                         </div>
 
@@ -384,10 +448,8 @@ const AdminDashboard = () => {
                             <table className="min-w-full divide-y divide-slate-100">
                                 <thead className="bg-slate-50/50">
                                     <tr>
-                                        {['User', 'Applied On', 'Plan', 'Status', 'Verification', ''].map(h => (
-                                            <th key={h} scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                                {h}
-                                            </th>
+                                        {['User', 'Applied On', 'Plan', 'Status', 'Verification', 'Actions'].map(h => (
+                                            <th key={h} scope="col" className="px-6 py-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">{h}</th>
                                         ))}
                                     </tr>
                                 </thead>
@@ -414,35 +476,35 @@ const AdminDashboard = () => {
                                                 <div className="text-xs text-slate-400">{new Date(app.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full border ${app.applicationType === 'Premium'
-                                                        ? 'bg-brand-orange/10 text-brand-orange border-brand-orange/20'
-                                                        : 'bg-brand-teal/10 text-brand-teal border-brand-teal/20'
-                                                    }`}>
+                                                <span className={`px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full border ${app.applicationType === 'Premium' ? 'bg-brand-orange/10 text-brand-orange border-brand-orange/20' : 'bg-brand-teal/10 text-brand-teal border-brand-teal/20'}`}>
                                                     {app.applicationType}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center gap-2">
-                                                    <div className={`h-2 w-2 rounded-full ${app.status === 'Verified' || app.status === 'Paid' ? 'bg-emerald-500' :
-                                                            app.status === 'Rejected' ? 'bg-red-500' : 'bg-amber-500'
-                                                        }`} />
+                                                    <div className={`h-2 w-2 rounded-full ${app.status === 'Verified' || app.status === 'Paid' ? 'bg-emerald-500' : app.status === 'Rejected' ? 'bg-red-500' : 'bg-amber-500'}`} />
                                                     <span className="text-sm text-slate-700 font-medium">{app.status}</span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`text-xs font-bold ${app.verificationStatus === 'Passed' ? 'text-emerald-600' :
-                                                        app.verificationStatus === 'Review Required' ? 'text-amber-600' : 'text-slate-400'
-                                                    }`}>
+                                                <span className={`text-xs font-bold ${app.verificationStatus === 'Passed' ? 'text-emerald-600' : app.verificationStatus === 'Review Required' ? 'text-amber-600' : 'text-slate-400'}`}>
                                                     {app.verificationStatus || 'Pending'}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
-                                                <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="flex justify-end gap-1">
                                                     <button className="text-brand-teal hover:text-teal-900 p-2 hover:bg-teal-50 rounded-lg transition-colors" title="View">
                                                         <Eye className="h-4 w-4" />
                                                     </button>
                                                     <button onClick={() => handleDownload(app._id)} className="text-slate-400 hover:text-slate-700 p-2 hover:bg-slate-100 rounded-lg transition-colors" title="Download Card">
                                                         <Download className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setDeleteTarget({ id: app._id, name: app.personalDetails?.fullName || 'this applicant' })}
+                                                        className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Delete Application"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -465,8 +527,7 @@ const StatCard = ({ icon, title, value, trend, iconBg = 'bg-slate-100', valueCol
         <div className="bg-white rounded-2xl p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-slate-100 hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-4">
                 <div className={`${iconBg} p-2.5 rounded-xl`}>{icon}</div>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold ${positive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'
-                    }`}>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-lg text-xs font-bold ${positive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
                     {trend}
                 </span>
             </div>

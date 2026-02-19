@@ -275,4 +275,28 @@ const extractOcrData = async (req, res) => {
     }
 };
 
-module.exports = { createApplication, getApplicationById, downloadCard, getAllApplications, extractOcrData };
+// @desc    Delete Application
+// @route   DELETE /api/applications/:id
+// @access  Admin
+const deleteApplication = async (req, res) => {
+    try {
+        const application = await Application.findById(req.params.id);
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+        // Cleanup uploaded files
+        const docs = application.documents || {};
+        ['aadhaarPath', 'panPath', 'photoPath'].forEach(key => {
+            if (docs[key]) {
+                try { fs.unlinkSync(docs[key]); } catch (e) { /* file may not exist */ }
+            }
+        });
+        await Application.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: 'Application deleted successfully' });
+    } catch (error) {
+        console.error('Delete Error:', error);
+        res.status(500).json({ message: 'Server Error', error: error.message });
+    }
+};
+
+module.exports = { createApplication, getApplicationById, downloadCard, getAllApplications, extractOcrData, deleteApplication };
