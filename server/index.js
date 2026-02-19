@@ -41,6 +41,15 @@ app.use('/api/applications', require('./routes/applicationRoutes'));
 app.get('/', (req, res) => {
     res.send('API is running...');
 });
+// Global Error Handler and 404
+app.use((err, req, res, next) => {
+    console.error('Unhandled Error:', err.stack);
+    res.status(500).json({
+        success: false,
+        message: 'Server Error',
+        error: err.message
+    });
+});
 
 const PORT = process.env.PORT || 5000;
 

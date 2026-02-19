@@ -8,7 +8,7 @@ const preprocessImage = async (filePath) => {
         console.log('Preprocessing image for better OCR...');
         // Upscale, Grayscale, Threshold, and Sharpen
         const buffer = await sharp(filePath)
-            .resize({ width: 2500, withoutEnlargement: false }) // Upscale significantly
+            .resize({ width: 1800, withoutEnlargement: false }) // Reduced from 2500 to prevent VPS OOM
             .grayscale()
             .normalize() // Stretch contrast range
             .gamma(2.0) // Darken midtones to strengthen faint lines (like the crossbar in '4') without erasing them
