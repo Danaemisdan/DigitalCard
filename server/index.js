@@ -43,11 +43,12 @@ app.get('/', (req, res) => {
 });
 // Global Error Handler and 404
 app.use((err, req, res, next) => {
-    console.error('Unhandled Error:', err.stack);
+    console.error('Unhandled Error:', err);
+    const errorMessage = typeof err === 'string' ? err : (err.message || 'Unknown Server Error');
     res.status(500).json({
         success: false,
-        message: 'Server Error',
-        error: err.message
+        message: errorMessage,
+        error: process.env.NODE_ENV === 'development' ? err.stack : errorMessage
     });
 });
 
