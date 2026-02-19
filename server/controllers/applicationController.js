@@ -132,7 +132,7 @@ const createApplication = async (req, res) => {
         });
 
         // Update Verification Status
-        if (allDocumentsValid && hasDocuments) {
+        if ((aadhaarVerified && panVerified) && hasDocuments) {
             application.verificationStatus = 'Passed';
         } else {
             application.verificationStatus = 'Pending';

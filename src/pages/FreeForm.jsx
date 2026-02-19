@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowRight, Gift, Shield, Loader2, CheckCircle, Download } from 'lucide-react';
 import API_URL from '../config';
 import FileUpload from '../components/FileUpload';
+import imageCompression from 'browser-image-compression';
 
 const FreeForm = () => {
     const [formData, setFormData] = useState({
@@ -29,34 +30,59 @@ const FreeForm = () => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+
+
     const handleFileSelect = async (field, file) => {
-        setFiles(prev => ({ ...prev, [field]: file }));
+        if (!file) {
+            setFiles(prev => ({ ...prev, [field]: null }));
+            return;
+        }
 
-        // Interactive OCR Extraction for Aadhaar
-        if (field === 'aadhaar' && file) {
-            try {
-                // Show some scanning indicator if possible, or just background do it
-                const ocrData = new FormData();
-                ocrData.append('document', file);
+        try {
+            const options = {
+                maxSizeMB: 0.8, // Compress to ~800KB
+                maxWidthOrHeight: 1920,
+                useWebWorker: true,
+                fileType: 'image/jpeg'
+            };
 
-                const res = await fetch(`${API_URL}/api/applications/extract-ocr`, {
-                    method: 'POST',
-                    body: ocrData
-                });
-                const result = await res.json();
-
-                if (result.success && result.extractedData) {
-                    setFormData(prev => ({
-                        ...prev,
-                        aadhaarNumber: result.extractedData.aadhaarNumber || prev.aadhaarNumber,
-                        gender: result.extractedData.gender || prev.gender,
-                        // If we extract name later, we can add it here:
-                        // fullName: result.extractedData.name || prev.fullName 
-                    }));
-                }
-            } catch (err) {
-                console.error("Auto-extraction failed", err);
+            // Only compress images, pass PDFs as is
+            let processedFile = file;
+            if (file.type.startsWith('image/')) {
+                console.log(`Compressing ${field}... Original: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+                processedFile = await imageCompression(file, options);
+                console.log(`Compressed ${field}: ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
             }
+
+            setFiles(prev => ({ ...prev, [field]: processedFile }));
+
+            // Interactive OCR Extraction for Aadhaar
+            if (field === 'aadhaar' && processedFile) {
+                try {
+                    const ocrData = new FormData();
+                    ocrData.append('document', processedFile);
+
+                    const res = await fetch(`${API_URL}/api/applications/extract-ocr`, {
+                        method: 'POST',
+                        body: ocrData
+                    });
+                    const result = await res.json();
+
+                    if (result.success && result.extractedData) {
+                        setFormData(prev => ({
+                            ...prev,
+                            aadhaarNumber: result.extractedData.aadhaarNumber || prev.aadhaarNumber,
+                            gender: result.extractedData.gender || prev.gender,
+                        }));
+                    }
+                } catch (err) {
+                    console.error("Auto-extraction failed", err);
+                }
+            }
+        } catch (error) {
+            console.error("Compression failed", error);
+            // Fallback to original file
+            setFiles(prev => ({ ...prev, [field]: file }));
         }
     };
 
