@@ -267,17 +267,31 @@ const FreeForm = () => {
                     </div>
 
 
-                    <div className="bg-brand-cream rounded-xl p-6 border border-brand-teal/10">
-                        <label className="block text-sm font-bold text-brand-teal mb-2">Referral Code (Mandatory)</label>
-                        <input
-                            type="text"
-                            name="referralCode"
-                            value={formData.referralCode}
-                            onChange={handleChange}
-                            required
-                            placeholder="Enter code"
-                            className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
-                        />
+                    <div className="bg-brand-cream rounded-xl p-6 border border-brand-teal/10 space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-brand-teal mb-2">Referral Code (Mandatory)</label>
+                            <input
+                                type="text"
+                                name="referralCode"
+                                value={formData.referralCode}
+                                onChange={handleChange}
+                                required
+                                placeholder="Enter code"
+                                className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-brand-teal mb-2">Aadhaar Number (Optional)</label>
+                            <input
+                                type="text"
+                                name="aadhaarNumber"
+                                value={formData.aadhaarNumber || ''}
+                                onChange={handleChange}
+                                placeholder="Enter Aadhaar Number if manually known"
+                                className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
+                            />
+                        </div>
                     </div>
 
                     <div className="border-t border-slate-100 pt-8">

@@ -253,6 +253,17 @@ const PremierForm = () => {
                                         placeholder="+91 9876543210"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Aadhaar Number (Optional)</label>
+                                    <input
+                                        type="text"
+                                        name="aadhaarNumber"
+                                        value={formData.aadhaarNumber || ''}
+                                        onChange={handleChange}
+                                        className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange"
+                                        placeholder="Enter if known manually"
+                                    />
+                                </div>
 
                             </div>
 
