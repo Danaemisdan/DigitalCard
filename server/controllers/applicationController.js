@@ -240,7 +240,10 @@ const downloadCard = async (req, res) => {
 
     } catch (error) {
         console.error("PDF Download Error", error);
-        res.status(500).json({ message: 'Error generating PDF' });
+        res.status(500).json({
+            message: 'Error generating PDF: ' + error.message,
+            error: error.message
+        });
     }
 };
 
