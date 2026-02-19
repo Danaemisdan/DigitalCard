@@ -3,7 +3,7 @@ import React from 'react';
 const Logo = ({ className = "h-8 w-auto" }) => {
     return (
         <img
-            src="/logo.png"
+            src="/logo.svg"
             alt="Bharat Peak Business Logo"
             className={className}
         />

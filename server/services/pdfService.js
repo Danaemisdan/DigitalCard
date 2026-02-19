@@ -10,11 +10,16 @@ const generateCardPDF = async (applicationData) => {
       });
       const page = await browser.newPage();
 
-      // Load the logo image
-      const logoPath = path.join(__dirname, '../../public/logo.png');
-      const logoBase64 = fs.existsSync(logoPath)
-         ? `data:image/png;base64,${fs.readFileSync(logoPath).toString('base64')}`
-         : '';
+      // Load the logo image (Prioritize SVG for quality)
+      const logoSvgPath = path.join(__dirname, '../../public/logo.svg');
+      const logoPngPath = path.join(__dirname, '../../public/logo.png');
+
+      let logoBase64 = '';
+      if (fs.existsSync(logoSvgPath)) {
+         logoBase64 = `data:image/svg+xml;base64,${fs.readFileSync(logoSvgPath).toString('base64')}`;
+      } else if (fs.existsSync(logoPngPath)) {
+         logoBase64 = `data:image/png;base64,${fs.readFileSync(logoPngPath).toString('base64')}`;
+      }
 
       // Convert uploaded images to base64 for embedding
       const photoBase64 = applicationData.documents.photoPath
