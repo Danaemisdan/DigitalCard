@@ -60,8 +60,8 @@ const PremierForm = () => {
     const handleNextStep = (e) => {
         e.preventDefault();
         // Basic validation for Step 1
-        if (!formData.fullName || !formData.email || !files.aadhaar || !files.pan || !files.photo) {
-            setErrorMessage("Please fill all fields and upload all documents.");
+        if (!formData.fullName || !formData.email || !formData.mobile || !files.aadhaar || !files.pan || !files.photo) {
+            setErrorMessage("All details and mandatory uploads (Aadhaar, PAN, Photo) are required to continue.");
             return;
         }
         setErrorMessage('');
@@ -70,6 +70,13 @@ const PremierForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Final sanity check before payment simulation
+        if (!files.aadhaar || !files.pan || !files.photo) {
+            setErrorMessage("Mandatory documents are missing. Please go back and upload them.");
+            return;
+        }
+
         setStatus('processing_payment');
         setErrorMessage('');
 

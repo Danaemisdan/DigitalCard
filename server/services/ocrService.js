@@ -91,24 +91,24 @@ const verifyDocument = async (filePath, type) => {
                 console.log("High Accuracy Mode: Extracted Name:", extractedData.name);
             }
 
-            // Keywords: "government of india", "mera aadhaar", or 12 digit number extraction logic (simplified)
+            // Keywords: "government of india", "mera aadhaar", or 12 digit number extraction logic
             if (cleanText.includes('government of india') || cleanText.includes('aadhaar') || extractedData.aadhaarNumber) {
                 isVerified = true;
             } else {
-                console.log('Relaxed Validation: Aadhaar keywords missing, but proceeding.'); // This line was not changed in the instruction, keeping it.
-                isVerified = true;
+                console.log('REJECTING: Aadhaar keywords and numbers missing.');
+                isVerified = false;
             }
         } else if (type === 'pan') {
-            // ... PAN logic remains same, but benefits from preprocessing
+            // PAN logic
             if (cleanText.includes('income tax') || cleanText.includes('permanent account number') || cleanText.match(/[a-z]{5}\d{4}[a-z]{1}/)) {
                 isVerified = true;
             } else {
-                console.log('Relaxed Validation: PAN keywords missing, but proceeding.'); // This line was not changed in the instruction, keeping it.
-                isVerified = true;
+                console.log('REJECTING: PAN keywords and pattern missing.');
+                isVerified = false;
             }
         }
 
-        return { isVerified: true, extractedData };
+        return { isVerified, extractedData };
     } catch (error) {
         console.error(`OCR Error for ${type}:`, error);
         return { isVerified: false, extractedData: {} };

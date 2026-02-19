@@ -33,8 +33,24 @@ const createApplication = async (req, res) => {
             photoPath: (files.photo && files.photo[0]) ? files.photo[0].path : null,
         };
 
-        // --- 1. Trigger OCR Verification FIRST (before creating DB record) ---
-        // --- 1. Trigger OCR Verification FIRST (before creating DB record) ---
+        // --- STRICT VALIDATION: Require all 3 files ---
+        if (!documentPaths.aadhaarPath || !documentPaths.panPath || !documentPaths.photoPath) {
+            console.log('REJECTING: Missing mandatory files.');
+            // Cleanup any files that WERE uploaded
+            try {
+                if (documentPaths.aadhaarPath) fs.unlinkSync(documentPaths.aadhaarPath);
+                if (documentPaths.panPath) fs.unlinkSync(documentPaths.panPath);
+                if (documentPaths.photoPath) fs.unlinkSync(documentPaths.photoPath);
+            } catch (e) { }
+
+            return res.status(400).json({
+                success: false,
+                message: 'Incomplete Application',
+                error: 'AADHAAR, PAN, and PHOTO are all mandatory. Please ensure all three files are uploaded properly.'
+            });
+        }
+
+        // --- 1. Trigger OCR Verification ---
         let aadhaarVerified = false;
         let panVerified = false;
         let extractedAadhaar = {};
@@ -49,18 +65,35 @@ const createApplication = async (req, res) => {
             panVerified = result.isVerified;
         }
 
-        // Auto-fill from OCR if not provided
+        // --- 2. Reject if OCR Verification Fails ---
+        if (!aadhaarVerified || !panVerified) {
+            console.log(`REJECTING: OCR failed. Aadhaar: ${aadhaarVerified}, PAN: ${panVerified}`);
+            // Cleanup files
+            try {
+                if (documentPaths.aadhaarPath) fs.unlinkSync(documentPaths.aadhaarPath);
+                if (documentPaths.panPath) fs.unlinkSync(documentPaths.panPath);
+                if (documentPaths.photoPath) fs.unlinkSync(documentPaths.photoPath);
+            } catch (cleanupError) { }
+
+            return res.status(400).json({
+                success: false,
+                message: 'Document Verification Failed',
+                error: 'The uploaded Aadhaar or PAN card could not be verified as authentic. Please upload clear, original images.',
+                verificationDetails: {
+                    aadhaar: aadhaarVerified,
+                    pan: panVerified
+                }
+            });
+        }
+
+        // Auto-fill from OCR if valid
         const finalGender = gender || extractedAadhaar.gender || 'Other';
         const finalAadhaarNumber = aadhaarNumber || extractedAadhaar.aadhaarNumber || 'PENDING';
 
-        // Generate Unique Code: M-{MobileLast4}-A-{AadhaarLast4}
+        // Generate Unique Code
         const mobileLast4 = mobile ? mobile.slice(-4) : '0000';
         const aadhaarLast4 = finalAadhaarNumber !== 'PENDING' ? finalAadhaarNumber.replace(/\s/g, '').slice(-4) : '0000';
         const uniqueCode = `M-${mobileLast4}-A-${aadhaarLast4}`;
-
-        // STRICT VALIDATION: Reject if documents are invalid
-        const hasDocuments = documentPaths.aadhaarPath || documentPaths.panPath;
-        const allDocumentsValid = (!documentPaths.aadhaarPath || aadhaarVerified) && (!documentPaths.panPath || panVerified);
 
         // Name Validation (If OCR extracted a name)
         if (extractedAadhaar.name && fullName) {
@@ -68,55 +101,23 @@ const createApplication = async (req, res) => {
             const documentName = extractedAadhaar.name.toLowerCase().replace(/\./g, ' ').replace(/\s+/g, ' ').trim();
 
             const enteredWords = enteredName.split(' ').filter(w => w.length > 2);
-            // Check if at least one significant word from entered name exists in the document name
             const hasMatch = enteredWords.some(word => documentName.includes(word));
 
             if (enteredWords.length > 0 && !hasMatch) {
                 console.log(`REJECTING: Name Mismatch. Entered: '${enteredName}', Doc: '${documentName}'`);
                 // Cleanup files
                 try {
-                    if (files.aadhaar && files.aadhaar[0]) fs.unlinkSync(files.aadhaar[0].path);
-                    if (files.pan && files.pan[0]) fs.unlinkSync(files.pan[0].path);
-                    if (files.photo && files.photo[0]) fs.unlinkSync(files.photo[0].path);
+                    fs.unlinkSync(documentPaths.aadhaarPath);
+                    fs.unlinkSync(documentPaths.panPath);
+                    fs.unlinkSync(documentPaths.photoPath);
                 } catch (e) { }
 
                 return res.status(400).json({
                     success: false,
                     message: 'Name Verification Failed',
-                    error: `Name mismatch detected. The name '${fullName}' does not match the name on your Aadhaar card (${extractedAadhaar.name}). Please match the card details exactly.`
+                    error: `Name mismatch detected. The name '${fullName}' does not match the name on your Aadhaar card (${extractedAadhaar.name}).`
                 });
             }
-        }
-
-        console.log(`Validation Check - Has Documents: ${hasDocuments}, All Valid: ${allDocumentsValid}, Aadhaar: ${aadhaarVerified}, PAN: ${panVerified}`);
-
-        if (hasDocuments && !allDocumentsValid) {
-            // Cleanup uploaded files since we're rejecting
-            try {
-                if (files.aadhaar && files.aadhaar[0] && fs.existsSync(files.aadhaar[0].path)) {
-                    fs.unlinkSync(files.aadhaar[0].path);
-                }
-                if (files.pan && files.pan[0] && fs.existsSync(files.pan[0].path)) {
-                    fs.unlinkSync(files.pan[0].path);
-                }
-                if (files.photo && files.photo[0] && fs.existsSync(files.photo[0].path)) {
-                    fs.unlinkSync(files.photo[0].path);
-                }
-            } catch (cleanupError) {
-                console.error('File cleanup error:', cleanupError);
-            }
-
-            console.log('REJECTING APPLICATION - Invalid Documents');
-
-            return res.status(400).json({
-                success: false,
-                message: 'Document Verification Failed',
-                error: 'The uploaded documents could not be verified. Please ensure you upload valid Aadhaar and PAN card images.',
-                verificationDetails: {
-                    aadhaar: aadhaarVerified,
-                    pan: panVerified
-                }
-            });
         }
 
         // --- 2. Create DB record ONLY if documents pass validation ---

@@ -62,6 +62,14 @@ const FreeForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // --- Added Frontend Validation ---
+        if (!files.aadhaar || !files.pan || !files.photo) {
+            setStatus('error');
+            setErrorMessage('All documents (Aadhaar, PAN, and Photo) are mandatory. Please upload them before submitting.');
+            return;
+        }
+
         setLoading(true);
         setStatus('idle');
         setErrorMessage('');
