@@ -1,3 +1,3 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://72.61.226.33';
+const API_URL = import.meta.env.VITE_API_URL || 'https://api.bharatpeakbusiness.com';
 
 export default API_URL;
