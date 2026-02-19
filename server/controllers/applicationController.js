@@ -224,7 +224,8 @@ const downloadCard = async (req, res) => {
         }
 
         // Fallback: Generate if not found (e.g. old records) - Slower
-        const pdfBuffer = await generateCardPDF(application);
+        const generatedPdf = await generateCardPDF(application);
+        const pdfBuffer = Buffer.from(generatedPdf);
 
         // Save for next time
         application.pdfData = pdfBuffer;
