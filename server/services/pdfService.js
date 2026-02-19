@@ -43,7 +43,7 @@ const generateCardPDF = async (applicationData) => {
       <head>
         <meta charset="UTF-8">
         <style>
-          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap');
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap');
           
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { 
@@ -77,107 +77,109 @@ const generateCardPDF = async (applicationData) => {
              justify-content: space-between;
              align-items: flex-start;
              padding: 16px 24px;
-             background: rgba(255,255,255,0.15);
-             border-bottom: 1px solid rgba(255,255,255,0.3);
+             background: rgba(255,255,255,0.2);
+             border-bottom: 1px solid rgba(255,255,255,0.4);
+             backdrop-filter: blur(5px);
           }
           .header-left {
              display: flex;
              flex-direction: column;
           }
           .company-name {
-             font-size: 24px;
+             font-size: 26px;
              font-weight: 900;
              color: #000;
              text-transform: uppercase;
-             line-height: 1.1;
+             line-height: 1;
+             letter-spacing: -0.5px;
              margin-bottom: 2px;
           }
           .company-tagline {
-             font-size: 12px;
+             font-size: 11px;
              font-weight: 600;
-             color: #333;
+             color: #374151;
+             text-transform: uppercase;
+             letter-spacing: 0.5px;
           }
           .company-sub {
              font-size: 10px;
              font-weight: 700;
              color: #fff;
              margin-top: 4px;
-             padding: 2px 6px;
+             padding: 2px 8px;
              background: #B45309;
              display: inline-block;
              width: fit-content;
-             border-radius: 4px;
+             border-radius: 12px;
           }
           
           .header-right {
              display: flex;
              flex-direction: column;
              align-items: flex-end;
+             gap: 6px;
           }
           .logo-img {
-             height: 50px;
+             height: 45px;
              width: auto;
-             margin-bottom: 4px;
              filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
           }
           
-             text-align: right;
-             font-family: 'Arial', sans-serif;
-             font-size: 13px;
+          .card-type-badge {
+             font-family: 'Inter', sans-serif;
+             font-size: 11px;
              font-weight: 800;
-             letter-spacing: 1px;
+             letter-spacing: 0.5px;
              text-transform: uppercase;
              
-             /* Premium Gradient Border */
-             background: linear-gradient(white, white) padding-box,
-                         linear-gradient(90deg, #FF9933, #138808) border-box;
-             border: 2px solid transparent;
-             border-radius: 50px;
-             padding: 4px 16px;
-             color: #138808;
-             box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+             /* Premium Gradient Pill */
+             background: linear-gradient(90deg, #EA580C, #15803d);
+             color: white;
+             padding: 4px 14px;
+             border-radius: 20px;
+             box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+             border: 1px solid rgba(255,255,255,0.5);
+             text-shadow: 0 1px 2px rgba(0,0,0,0.3);
           }
 
-          /* Main Body */
+          /* Main Body - GRID LAYOUT */
           .card-body {
-             padding: 15px 24px 20px;
-             display: flex;
-             justify-content: space-between;
-             align-items: flex-start;
+             padding: 20px 24px;
+             display: grid;
+             grid-template-columns: 90px 1fr 100px; /* Photo | Details | QR */
+             grid-template-rows: auto auto;
+             gap: 15px;
+             align-items: start;
              min-height: 180px;
              position: relative;
           }
-          
-          .user-main-info {
-             flex: 1;
-             padding-right: 10px;
-             z-index: 2;
-          }
-          .user-name {
-             font-size: 28px;
-             font-weight: 800;
-             color: #000;
-             text-transform: uppercase;
-             margin-bottom: 4px;
-             line-height: 1;
-          }
-          .user-id {
-             font-size: 22px;
-             font-weight: 700;
-             color: #000;
-             margin-bottom: 12px;
-             letter-spacing: 0.5px;
+           
+          /* Watermark - Centered in grid */
+          .bg-watermark {
+             position: absolute;
+             top: 50%;
+             left: 50%;
+             transform: translate(-50%, -50%) rotate(-30deg);
+             font-size: 80px;
+             font-weight: 900;
+             color: rgba(0,0,0,0.03); /* Subtle dark watermark */
+             pointer-events: none;
+             white-space: nowrap;
+             z-index: 0;
           }
 
+          /* Photo Section - Top Left */
           .photo-box {
-             width: 80px;
-             height: 100px;
+             grid-column: 1;
+             grid-row: 2;
+             width: 90px;
+             height: 110px;
              border-radius: 8px;
-             border: 2px solid #138808;
+             border: 3px solid #fff;
              overflow: hidden;
-             margin-bottom: 10px;
-             background: #fff;
-             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+             background: #e5e7eb;
+             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+             z-index: 2;
           }
           .photo {
              width: 100%;
@@ -185,40 +187,100 @@ const generateCardPDF = async (applicationData) => {
              object-fit: cover;
           }
 
-          .user-details-list {
-             font-size: 13px;
-             font-weight: 600;
-             color: #1F2937;
-             line-height: 1.4;
+          /* User Main Info - Top Row spanning all */
+          .user-header-info {
+             grid-column: 1 / -1;
+             grid-row: 1;
+             margin-bottom: 5px;
+             z-index: 2;
+             border-bottom: 1px solid rgba(0,0,0,0.05); /* Very subtle separator */
+             padding-bottom: 15px;
+          }
+          
+          .user-name {
+             font-size: 24px;
+             font-weight: 800;
+             color: #111827;
+             text-transform: uppercase;
+             line-height: 1.1;
+             letter-spacing: -0.5px;
+          }
+          .user-id {
+             font-size: 14px;
+             font-weight: 700;
+             color: #15803d; /* Green */
+             letter-spacing: 0.5px;
+             margin-top: 2px;
+             font-family: monospace;
           }
 
-          .qr-section {
-             width: 110px;
-             text-align: right;
+          /* Details List - Middle Column */
+          .user-details-list {
+             grid-column: 2;
+             grid-row: 2;
              display: flex;
              flex-direction: column;
-             align-items: center;
-             background: #fff;
-             padding: 8px;
-             border-radius: 8px;
-             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+             justify-content: center;
+             font-size: 12px;
+             font-weight: 600;
+             color: #374151;
+             line-height: 1.8;
+             padding-left: 10px;
              z-index: 2;
+             height: 110px; /* Match photo height */
+          }
+          .detail-item {
+             display: flex;
+             align-items: baseline;
+          }
+          .detail-label {
+             width: 60px;
+             font-weight: 800;
+             color: #9a3412; /* Dark Orange */
+             font-size: 10px;
+             text-transform: uppercase;
+          }
+          .detail-value {
+             color: #000;
+             font-weight: 700;
+             font-size: 13px;
+          }
+
+          /* QR Section - Right Column */
+          .qr-section {
+             grid-column: 3;
+             grid-row: 2;
+             width: 100px;
+             height: 100px;
+             background: #fff;
+             padding: 4px;
+             border-radius: 8px;
+             border: 1px solid rgba(0,0,0,0.1);
+             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+             display: flex;
+             justify-content: center;
+             align-items: center;
+             z-index: 2;
+             align-self: center;
           }
           
           /* Footer strip on card */
           .card-footer-strip {
              background: rgba(255,255,255,0.4);
-             padding: 10px 24px;
+             padding: 8px 24px;
              display: flex;
              justify-content: space-between;
              align-items: center;
              font-weight: 700;
-             font-size: 12px;
-             color: #000;
-             border-top: 1px solid rgba(0,0,0,0.1);
+             font-size: 11px;
+             color: #1f2937;
+             border-top: 1px solid rgba(0,0,0,0.05);
           }
           .expiry-text {
-             font-size: 13px;
+             font-size: 11px;
+             background: rgba(255,255,255,0.6);
+             padding: 2px 8px;
+             border-radius: 4px;
           }
 
           /* T&C Section */
@@ -269,20 +331,6 @@ const generateCardPDF = async (applicationData) => {
              color: #9ca3af;
              margin-top: 15px;
           }
-
-          /* Watermark Effect */
-          .bg-watermark {
-             position: absolute;
-             top: 50%;
-             left: 50%;
-             transform: translate(-50%, -50%) rotate(-30deg);
-             font-size: 80px;
-             font-weight: 900;
-             color: rgba(255,255,255,0.15);
-             pointer-events: none;
-             white-space: nowrap;
-             z-index: 1;
-          }
         </style>
         <!-- QRCode Library -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -306,19 +354,32 @@ const generateCardPDF = async (applicationData) => {
               <div class="card-body">
                  <div class="bg-watermark">BHARAT PEAK</div>
                  
-                 <div class="user-main-info">
+                 <!-- Row 1: Header Info -->
+                 <div class="user-header-info">
                     <div class="user-name">${applicationData.personalDetails.fullName}</div>
-                    <div class="user-id">${applicationData.uniqueCode || 'PENDING'}</div>
-                    
-                    ${photoBase64 ? `<div class="photo-box"><img src="${photoBase64}" class="photo" /></div>` : ''}
+                    <div class="user-id">ID: ${applicationData.uniqueCode || 'PENDING'}</div>
+                 </div>
 
-                    <div class="user-details-list">
-                       ${applicationData.personalDetails.mobile ? `<div>Mobile: ${applicationData.personalDetails.mobile}</div>` : ''}
-                       ${applicationData.personalDetails.aadhaarNumber ? `<div>Aadhaar: ${applicationData.personalDetails.aadhaarNumber}</div>` : ''}
-                       ${applicationData.personalDetails.city ? `<div>City: ${applicationData.personalDetails.city}</div>` : ''}
+                 <!-- Row 2 Col 1: Photo -->
+                 <div class="photo-box">
+                    ${photoBase64 ? `<img src="${photoBase64}" class="photo" />` : ''}
+                 </div>
+
+                 <!-- Row 2 Col 2: Details -->
+                 <div class="user-details-list">
+                    ${applicationData.personalDetails.mobile ?
+            `<div class="detail-item"><span class="detail-label">Mobile</span> <span class="detail-value">${applicationData.personalDetails.mobile}</span></div>` : ''}
+                    
+                    <div class="detail-item">
+                       <span class="detail-label">Aadhaar</span> 
+                       <span class="detail-value">${applicationData.personalDetails.aadhaarNumber || 'PENDING'}</span>
                     </div>
+                    
+                    ${applicationData.personalDetails.city ?
+            `<div class="detail-item"><span class="detail-label">City</span> <span class="detail-value">${applicationData.personalDetails.city}</span></div>` : ''}
                  </div>
                  
+                 <!-- Row 2 Col 3: QR -->
                  <div class="qr-section">
                     <div id="qrcode"></div>
                  </div>
@@ -375,8 +436,8 @@ const generateCardPDF = async (applicationData) => {
            try {
               new QRCode(document.getElementById("qrcode"), {
                  text: "${applicationData.uniqueCode || 'PENDING'}",
-                 width: 94,
-                 height: 94,
+                 width: 90,
+                 height: 90,
                  colorDark : "#000000",
                  colorLight : "#ffffff",
                  correctLevel : QRCode.CorrectLevel.M
