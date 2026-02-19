@@ -99,6 +99,7 @@ const AdminDashboard = () => {
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const [deleteTarget, setDeleteTarget] = useState(null); // {id, name}
+    const [viewTarget, setViewTarget] = useState(null); // Application object
     const [deleting, setDeleting] = useState(false);
 
     useEffect(() => { fetchApplications(); }, []);
@@ -222,7 +223,103 @@ const AdminDashboard = () => {
                     </div>
                 )}
 
-                {/* Header */}
+                {/* View Details Modal */}
+                {viewTarget && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
+                        <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+                            <div className="flex justify-between items-start mb-6">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-900">Application Details</h3>
+                                    <p className="text-sm text-slate-500">View user documents and information</p>
+                                </div>
+                                <button onClick={() => setViewTarget(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
+                                    <X className="h-5 w-5 text-slate-400" />
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-b pb-2">Personal Info</h4>
+                                    <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                                        <div className="text-slate-500">Full Name</div>
+                                        <div className="text-slate-900 font-medium">{viewTarget.personalDetails?.fullName}</div>
+                                        <div className="text-slate-500">Mobile</div>
+                                        <div className="text-slate-900 font-medium">{viewTarget.personalDetails?.mobile}</div>
+                                        <div className="text-slate-500">Email</div>
+                                        <div className="text-slate-900 font-medium break-all">{viewTarget.personalDetails?.email}</div>
+                                        <div className="text-slate-500">Gender</div>
+                                        <div className="text-slate-900 font-medium">{viewTarget.personalDetails?.gender}</div>
+                                        <div className="text-slate-500">Aadhaar No.</div>
+                                        <div className="text-slate-900 font-medium">{viewTarget.personalDetails?.aadhaarNumber}</div>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-b pb-2">Application Info</h4>
+                                    <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm">
+                                        <div className="text-slate-500">Plan Type</div>
+                                        <div className="text-slate-900 font-medium"><span className="bg-slate-100 px-2 py-0.5 rounded text-xs font-bold">{viewTarget.applicationType}</span></div>
+                                        <div className="text-slate-500">Unique Code</div>
+                                        <div className="text-slate-900 font-medium font-mono text-xs bg-slate-50 px-2 py-1 rounded border">{viewTarget.uniqueCode || 'PENDING'}</div>
+                                        <div className="text-slate-500">Status</div>
+                                        <div className="text-slate-900 font-medium">{viewTarget.status}</div>
+                                        <div className="text-slate-500">Applied On</div>
+                                        <div className="text-slate-900 font-medium">{new Date(viewTarget.createdAt).toLocaleDateString('en-IN')}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-b pb-2">Uploaded Documents</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    {/* Helper to get clean URL */}
+                                    {['aadhaarPath', 'panPath', 'photoPath'].map((docKey) => {
+                                        const pathVal = viewTarget.documents?.[docKey];
+                                        const fileName = docKey.replace('Path', '');
+                                        // Assume pathVal is 'uploads/filename.ext'
+                                        // We need to verify if it has 'uploads/' prefix or not.  
+                                        // If stored as 'uploads/file', and we serve '/uploads', then url is API_URL + '/' + pathVal
+                                        const fileUrl = pathVal ? `${API_URL}/${pathVal.replace(/\\/g, '/')}` : null;
+
+                                        return (
+                                            <div key={docKey} className="border border-slate-200 rounded-xl p-4 flex flex-col items-center gap-3 hover:border-brand-teal transition-colors bg-slate-50/50">
+                                                <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                                                    {docKey.includes('photo') ? <Users className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}
+                                                </div>
+                                                <div className="text-center">
+                                                    <div className="text-sm font-bold text-slate-700 capitalize">{fileName}</div>
+                                                    <div className="text-xs text-slate-400">{pathVal ? 'Available' : 'Missing'}</div>
+                                                </div>
+                                                {pathVal ? (
+                                                    <a
+                                                        href={fileUrl}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="w-full py-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+                                                    >
+                                                        <Download className="h-3 w-3" /> Download
+                                                    </a>
+                                                ) : (
+                                                    <button disabled className="w-full py-2 bg-slate-100 text-slate-300 text-xs font-bold rounded-lg cursor-not-allowed">
+                                                        Not Uploaded
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex justify-end">
+                                <button
+                                    onClick={() => setViewTarget(null)}
+                                    className="px-6 py-2.5 bg-brand-teal text-white text-sm font-bold rounded-xl hover:bg-teal-900 transition-all shadow-lg shadow-brand-teal/20"
+                                >
+                                    Close Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
                     <div>
                         <h1 className="text-3xl font-display font-bold text-slate-900">Dashboard</h1>
@@ -493,7 +590,7 @@ const AdminDashboard = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right">
                                                 <div className="flex justify-end gap-1">
-                                                    <button className="text-brand-teal hover:text-teal-900 p-2 hover:bg-teal-50 rounded-lg transition-colors" title="View">
+                                                    <button onClick={() => setViewTarget(app)} className="text-brand-teal hover:text-teal-900 p-2 hover:bg-teal-50 rounded-lg transition-colors" title="View Details & Docs">
                                                         <Eye className="h-4 w-4" />
                                                     </button>
                                                     <button onClick={() => handleDownload(app._id)} className="text-slate-400 hover:text-slate-700 p-2 hover:bg-slate-100 rounded-lg transition-colors" title="Download Card">

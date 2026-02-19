@@ -1,6 +1,7 @@
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
+const path = require('path');
 const connectDB = require('./config/db');
 
 // Load env vars
@@ -37,6 +38,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/applications', require('./routes/applicationRoutes'));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/', (req, res) => {
     res.send('API is running...');

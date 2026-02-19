@@ -121,16 +121,21 @@ const generateCardPDF = async (applicationData) => {
              filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
           }
           
-          .card-type-badge {
-             font-family: 'Courier New', monospace;
-             font-size: 14px;
+             text-align: right;
+             font-family: 'Arial', sans-serif;
+             font-size: 13px;
              font-weight: 800;
-             color: #138808;
-             border: 2px solid #92400E;
-             padding: 2px 10px;
-             border-radius: 20px;
-             background: rgba(255,255,255,0.4);
+             letter-spacing: 1px;
              text-transform: uppercase;
+             
+             /* Premium Gradient Border */
+             background: linear-gradient(white, white) padding-box,
+                         linear-gradient(90deg, #FF9933, #138808) border-box;
+             border: 2px solid transparent;
+             border-radius: 50px;
+             padding: 4px 16px;
+             color: #138808;
+             box-shadow: 0 4px 10px rgba(0,0,0,0.08);
           }
 
           /* Main Body */
