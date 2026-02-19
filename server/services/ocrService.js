@@ -24,13 +24,18 @@ const verifyDocument = async (filePath, type) => {
     try {
         console.log(`Starting OCR for ${type} at ${filePath}`);
 
-        const imageSource = await preprocessImage(filePath);
+        let imageSource = filePath;
+        try {
+            imageSource = await preprocessImage(filePath);
+        } catch (procError) {
+            console.warn('Preprocessing failed, using original file:', procError);
+        }
 
-        // Run OCR in both English and Telugu
+        // Run OCR in both English and Telugu with improved error handling
         const [engResult, telResult] = await Promise.all([
-            Tesseract.recognize(imageSource, 'eng'),
+            Tesseract.recognize(imageSource, 'eng').catch(e => { console.error('Eng OCR failed:', e); return { data: { text: '' } }; }),
             type === 'aadhaar'
-                ? Tesseract.recognize(imageSource, 'tel').catch(() => ({ data: { text: '' } }))
+                ? Tesseract.recognize(imageSource, 'tel').catch(e => { console.warn('Tel OCR failed (likely missing lang data):', e.message); return { data: { text: '' } }; })
                 : Promise.resolve({ data: { text: '' } }),
         ]);
 

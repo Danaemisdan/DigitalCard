@@ -172,8 +172,12 @@ const createApplication = async (req, res) => {
         });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Server Error', error: error.message });
+        console.error('Create Application Error:', error);
+        res.status(500).json({
+            message: 'Server Error: ' + error.message,
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 };
 
