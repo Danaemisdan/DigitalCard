@@ -28,7 +28,7 @@ function checkFileType(file, cb) {
     if (extname && mimetype) {
         return cb(null, true);
     } else {
-        cb('Images and PDFs only!');
+        cb(`Images and PDFs only! (Got: ${file.originalname}, Type: ${file.mimetype})`);
     }
 }
 

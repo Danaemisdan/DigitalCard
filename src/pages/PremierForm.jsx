@@ -48,8 +48,13 @@ const PremierForm = () => {
             let processedFile = file;
             if (file.type.startsWith('image/')) {
                 console.log(`Compressing ${field}... Original: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
-                processedFile = await imageCompression(file, options);
-                console.log(`Compressed ${field}: ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
+                try {
+                    const compressedBlob = await imageCompression(file, options);
+                    processedFile = new File([compressedBlob], file.name, { type: compressedBlob.type || file.type });
+                    console.log(`Compressed ${field}: ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
+                } catch (compErr) {
+                    console.warn(compErr);
+                }
             }
 
             setFiles(prev => ({ ...prev, [field]: processedFile }));
