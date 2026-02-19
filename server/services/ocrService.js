@@ -48,10 +48,14 @@ const verifyDocument = async (filePath, type) => {
 
         if (type === 'aadhaar') {
             // --- STRICT CHECK: 12-digit Aadhaar number ---
-            const aadhaarMatch = cleanText.match(/\b\d{4}[\s-]?\d{4}[\s-]?\d{4}\b/);
+            // --- STRICT CHECK: 12-digit Aadhaar number ---
+            // Allow multiple spaces/dashes between groups of 4 digits
+            const aadhaarMatch = cleanText.match(/\b\d{4}[\s-]+\d{4}[\s-]+\d{4}\b/) ||
+                cleanText.match(/\b\d{12}\b/);
+
             if (aadhaarMatch) {
                 console.log('Strict Check Passed: Extracted Aadhaar Number:', aadhaarMatch[0]);
-                extractedData.aadhaarNumber = aadhaarMatch[0].replace(/[\s-]/g, ' ');
+                extractedData.aadhaarNumber = aadhaarMatch[0].replace(/[\s-]/g, ''); // Store as pure 12 digits
             }
 
             // --- Gender Extraction ---

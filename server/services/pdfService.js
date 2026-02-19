@@ -57,18 +57,18 @@ const generateCardPDF = async (applicationData) => {
              margin: 0 auto;
           }
           
-          /* GOLD CARD DESIGN */
+          /* ORANGE-GREEN DESIGN */
           .id-card-wrapper {
              width: 100%;
              max-width: 600px;
              margin: 0 auto;
-             background: linear-gradient(135deg, #FDE68A 0%, #F59E0B 100%);
+             background: linear-gradient(135deg, #FF9933 0%, #FFFFFF 45%, #FFFFFF 55%, #138808 100%);
              border-radius: 16px;
              overflow: hidden;
              box-shadow: 0 4px 15px rgba(0,0,0,0.1);
              position: relative;
              margin-bottom: 20px;
-             border: 2px solid #D97706;
+             border: 2px solid #FF9933;
           }
 
           /* Header Section */
@@ -125,7 +125,7 @@ const generateCardPDF = async (applicationData) => {
              font-family: 'Courier New', monospace;
              font-size: 14px;
              font-weight: 800;
-             color: #92400E;
+             color: #138808;
              border: 2px solid #92400E;
              padding: 2px 10px;
              border-radius: 20px;
@@ -168,7 +168,7 @@ const generateCardPDF = async (applicationData) => {
              width: 80px;
              height: 100px;
              border-radius: 8px;
-             border: 2px solid #D97706;
+             border: 2px solid #138808;
              overflow: hidden;
              margin-bottom: 10px;
              background: #fff;
@@ -244,17 +244,17 @@ const generateCardPDF = async (applicationData) => {
              content: "•";
              position: absolute;
              left: 0;
-             color: #D97706; /* Dark gold */
+             color: #FF9933; /* Orange */
              font-weight: bold;
              font-size: 14px;
           }
           .term-header {
              font-size: 13px;
              font-weight: 700;
-             color: #92400E;
+             color: #138808;
              margin-bottom: 8px;
              text-transform: uppercase;
-             border-bottom: 1px solid #FDE68A;
+             border-bottom: 2px solid #FF9933;
              padding-bottom: 4px;
           }
 
