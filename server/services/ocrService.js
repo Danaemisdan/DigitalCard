@@ -55,24 +55,29 @@ const verifyDocument = async (filePath, type) => {
                 .replace(/[b]/g, '8')
                 .replace(/[z]/g, '2');
 
-            // --- STRICT CHECK: 12-digit Aadhaar number ---
-            // Allow multiple spaces/dashes between groups of 4 digits
-            const aadhaarMatch = normalizedText.match(/\b\d{4}[\s-]+\d{4}[\s-]+\d{4}\b/) ||
-                normalizedText.match(/\b\d{12}\b/);
+            // --- 1. Precise Match (Standard Formats) ---
+            let aadhaarMatch = normalizedText.match(/\b([2-9]\d{3})[\s-]*(\d{4})[\s-]*(\d{4})\b/) ||
+                normalizedText.match(/\b[2-9]\d{11}\b/);
+
+            // --- 2. Fallback Match (Allow noise between blocks, e.g. dots or colons) ---
+            if (!aadhaarMatch) {
+                aadhaarMatch = normalizedText.match(/([2-9]\d{3})[\s-.:=]{1,3}(\d{4})[\s-.:=]{1,3}(\d{4})/);
+            }
+
+            // --- 3. Super Fallback (Sequence of 12 digits with minimal noise between them) ---
+            if (!aadhaarMatch) {
+                const spacedDigitsRegex = /([2-9](?:[\s-]*\d){11})/;
+                const match3 = normalizedText.match(spacedDigitsRegex);
+                if (match3) {
+                    aadhaarMatch = match3;
+                }
+            }
 
             if (aadhaarMatch) {
-                console.log('Strict Check Passed: Extracted Aadhaar Number:', aadhaarMatch[0]);
-                extractedData.aadhaarNumber = aadhaarMatch[0].replace(/[\s-]/g, ''); // Store as pure 12 digits
-            } else {
-                // --- DEEP SEARCH: Find *any* 12-digit sequence that looks like Aadhaar ---
-                // Strip all non-digits
-                const numericOnly = normalizedText.replace(/\D/g, '');
-                // Look for 12 digits starting with 2-9 (Aadhaar doesn't start with 0 or 1)
-                const deepMatch = numericOnly.match(/[2-9]\d{11}/);
-
-                if (deepMatch) {
-                    console.log('Deep Search Passed: Found potential Aadhaar:', deepMatch[0]);
-                    extractedData.aadhaarNumber = deepMatch[0];
+                const cleanedNumber = aadhaarMatch[0].replace(/\D/g, '');
+                if (cleanedNumber.length === 12) {
+                    console.log('Robust Check Passed: Extracted Aadhaar Number:', cleanedNumber);
+                    extractedData.aadhaarNumber = cleanedNumber;
                 }
             }
 

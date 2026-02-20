@@ -384,7 +384,7 @@ const generateCardPDF = async (applicationData) => {
 
               <!-- Footer Strip -->
               <div class="front-footer">
-                  <div class="footer-tagline">“ Hum apke sath ”</div>
+                  <div class="footer-tagline">“ हम आपके साथ ”</div>
                   <div class="footer-sub">support@bharatpeakbusiness.com</div>
               </div>
            </div>
@@ -395,6 +395,7 @@ const generateCardPDF = async (applicationData) => {
               
               <div class="back-header">
                   <div class="back-org">Bharatpeak Business Services Pvt. Ltd.</div>
+                  <div style="font-size: 10px; color: #666; margin-top: 2px;">"हम आपके साथ"</div>
               </div>
 
               <div class="back-content">
