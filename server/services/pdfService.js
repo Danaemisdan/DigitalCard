@@ -71,11 +71,12 @@ const generateCardPDF = async (applicationData) => {
 
           /* --- FRONT SIDE --- */
           .card-front {
-             background: linear-gradient(135deg, #FFF7ED 0%, #FFFFFF 50%, #F0FDF4 100%); /* Subtle Orange-White-Green Tint */
-             border: 1px solid #FF9933;
+             background: linear-gradient(135deg, #FF9933 0%, #FFFFFF 40%, #FFFFFF 60%, #138808 100%); /* Vibrant Indian Flag tint */
+             border: 2px solid #eab308; /* Premium Gold-ish border */
              min-height: 280px;
              display: flex;
              flex-direction: column;
+             box-shadow: 0 8px 25px rgba(0,0,0,0.15); /* Stronger shadow */
           }
 
           /* Top Strip */
@@ -83,41 +84,44 @@ const generateCardPDF = async (applicationData) => {
              display: flex;
              justify-content: space-between;
              align-items: center;
-             padding: 10px 20px;
-             border-bottom: 2px solid #FF9933; /* Orange Line */
-             background: rgba(255,255,255,0.8);
+             padding: 15px 20px 5px;
+             background: transparent;
           }
           .header-branding {
              display: flex;
              align-items: center;
              gap: 10px;
           }
-          .header-logo { height: 35px; width: auto; }
+          .header-logo { height: 35px; width: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
           .header-text { display: flex; flex-direction: column; }
           .org-name {
-             font-size: 16px;
+             font-size: 17px;
              font-weight: 900;
              color: #000;
              text-transform: uppercase;
              line-height: 1;
+             letter-spacing: -0.5px;
           }
           .org-sub {
              font-size: 9px;
-             font-weight: 700;
-             color: #B45309;
+             font-weight: 800;
+             color: #9a3412;
              text-transform: uppercase;
              letter-spacing: 0.5px;
              margin-top: 2px;
           }
           .header-right-badge {
-             font-size: 9px;
-             font-weight: 800;
+             font-size: 10px;
+             font-weight: 900;
              text-transform: uppercase;
-             background: linear-gradient(90deg, #EA580C, #15803d);
+             background: linear-gradient(90deg, #ea580c, #16a34a);
              color: white;
-             padding: 3px 10px;
-             border-radius: 12px;
-             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+             padding: 5px 14px;
+             border-radius: 20px;
+             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+             border: 2px solid #fff;
+             letter-spacing: 0.5px;
+             text-shadow: 0 1px 2px rgba(0,0,0,0.5);
           }
 
           /* Main Body - Flex Row */

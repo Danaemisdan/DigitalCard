@@ -47,11 +47,18 @@ const verifyDocument = async (filePath, type) => {
         let extractedData = {};
 
         if (type === 'aadhaar') {
-            // --- STRICT CHECK: 12-digit Aadhaar number ---
+            // Aggressive normalization for common OCR digit errors
+            const normalizedText = cleanText
+                .replace(/[o]/g, '0')
+                .replace(/[l|i]/g, '1')
+                .replace(/[s]/g, '5')
+                .replace(/[b]/g, '8')
+                .replace(/[z]/g, '2');
+
             // --- STRICT CHECK: 12-digit Aadhaar number ---
             // Allow multiple spaces/dashes between groups of 4 digits
-            const aadhaarMatch = cleanText.match(/\b\d{4}[\s-]+\d{4}[\s-]+\d{4}\b/) ||
-                cleanText.match(/\b\d{12}\b/);
+            const aadhaarMatch = normalizedText.match(/\b\d{4}[\s-]+\d{4}[\s-]+\d{4}\b/) ||
+                normalizedText.match(/\b\d{12}\b/);
 
             if (aadhaarMatch) {
                 console.log('Strict Check Passed: Extracted Aadhaar Number:', aadhaarMatch[0]);
@@ -59,7 +66,7 @@ const verifyDocument = async (filePath, type) => {
             } else {
                 // --- DEEP SEARCH: Find *any* 12-digit sequence that looks like Aadhaar ---
                 // Strip all non-digits
-                const numericOnly = cleanText.replace(/\D/g, '');
+                const numericOnly = normalizedText.replace(/\D/g, '');
                 // Look for 12 digits starting with 2-9 (Aadhaar doesn't start with 0 or 1)
                 const deepMatch = numericOnly.match(/[2-9]\d{11}/);
 
