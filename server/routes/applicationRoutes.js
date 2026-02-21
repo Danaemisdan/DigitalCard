@@ -6,6 +6,7 @@ const upload = require('../middleware/uploadMiddleware');
 // Fields to upload
 const uploadFields = upload.fields([
     { name: 'aadhaar', maxCount: 1 },
+    { name: 'aadhaarBack', maxCount: 1 },
     { name: 'pan', maxCount: 1 },
     { name: 'photo', maxCount: 1 },
 ]);

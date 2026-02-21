@@ -17,6 +17,7 @@ const PremierForm = () => {
     });
     const [files, setFiles] = useState({
         aadhaar: null,
+        aadhaarBack: null,
         pan: null,
         photo: null
     });
@@ -131,6 +132,7 @@ const PremierForm = () => {
                 // For now, let's submit.
 
                 if (files.aadhaar) data.append('aadhaar', files.aadhaar);
+                if (files.aadhaarBack) data.append('aadhaarBack', files.aadhaarBack);
                 if (files.pan) data.append('pan', files.pan);
                 if (files.photo) data.append('photo', files.photo);
 
@@ -358,8 +360,9 @@ const PremierForm = () => {
                                     <Shield className="h-5 w-5 text-brand-teal mr-2" />
                                     Required Documents
                                 </h3>
-                                <div className="grid md:grid-cols-3 gap-6">
-                                    <FileUpload label="Aadhaar Card" required onFileSelect={(f) => handleFileSelect('aadhaar', f)} />
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <FileUpload label="Aadhaar Card (Front)" required onFileSelect={(f) => handleFileSelect('aadhaar', f)} />
+                                    <FileUpload label="Aadhaar Card (Back)" required onFileSelect={(f) => handleFileSelect('aadhaarBack', f)} />
                                     <FileUpload label="PAN Card" required onFileSelect={(f) => handleFileSelect('pan', f)} />
                                     <FileUpload label="Photo" required accept="image/*" onFileSelect={(f) => handleFileSelect('photo', f)} />
                                 </div>

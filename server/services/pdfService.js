@@ -10,7 +10,7 @@ const generateCardPDF = async (applicationData) => {
       });
       const page = await browser.newPage();
 
-      // Load the logo image (Prioritize SVG for quality)
+      // Load the logo image
       const logoSvgPath = path.join(__dirname, '../../public/logo.svg');
       const logoPngPath = path.join(__dirname, '../../public/logo.png');
 
@@ -21,21 +21,21 @@ const generateCardPDF = async (applicationData) => {
          logoBase64 = `data:image/png;base64,${fs.readFileSync(logoPngPath).toString('base64')}`;
       }
 
-      // Convert uploaded images to base64 for embedding
       const photoBase64 = applicationData.documents.photoPath
          ? `data:image/png;base64,${fs.readFileSync(applicationData.documents.photoPath).toString('base64')}`
          : '';
 
-      // Digital Identity Card Template (Ref: Aadhaar Style)
       const isPremier = applicationData.applicationType === 'Premier' || applicationData.applicationType === 'Premium';
       const validityPeriod = isPremier ? '1 Year' : '3 Months';
       const cardTitle = isPremier ? 'Premier Card' : 'Free Card';
 
-      // Calculate Expiry Date
       const expiryDate = isPremier
          ? new Date(new Date().setFullYear(new Date().getFullYear() + 1))
          : new Date(new Date().setMonth(new Date().getMonth() + 3));
       const formattedExpiry = expiryDate.toLocaleDateString('en-GB');
+
+      // Address from Aadhaar back OCR
+      const address = applicationData.personalDetails.address || '';
 
       const htmlContent = `
       <!DOCTYPE html>
@@ -49,384 +49,302 @@ const generateCardPDF = async (applicationData) => {
           body { 
             font-family: 'Inter', 'Noto Sans Devanagari', sans-serif; 
             background: #fff;
-            padding: 40px;
+            padding: 30px;
             -webkit-print-color-adjust: exact;
           }
           .page-container {
              max-width: 800px;
              margin: 0 auto;
-          }
-          
-          /* --- CARD COMMON STYLES --- */
-          .card-shared {
-             width: 100%;
-             max-width: 480px; /* Compact ID width */
-             margin: 0 auto 30px;
-             border-radius: 12px;
-             overflow: hidden;
-             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-             position: relative;
-             border: 1px solid rgba(0,0,0,0.1);
-          }
-
-          /* --- FRONT SIDE --- */
-          .card-front {
-             background: linear-gradient(135deg, #FF9933 0%, #FFFFFF 40%, #FFFFFF 60%, #138808 100%); /* Vibrant Indian Flag tint */
-             border: 2px solid #eab308; /* Premium Gold-ish border */
-             height: 320px;
              display: flex;
              flex-direction: column;
-             box-shadow: 0 8px 25px rgba(0,0,0,0.15); /* Stronger shadow */
+             align-items: center;
+             gap: 25px;
+          }
+          
+          /* ATM CARD: 85.6mm x 53.98mm ≈ 3.37" x 2.125" */
+          /* At 96dpi print: 323px x 204px. Scale up 2x for quality = 646px x 408px */
+          /* Puppeteer uses 96dpi, so we use mm directly */
+          .card {
+             width: 85.6mm;
+             height: 53.98mm;
+             border-radius: 3.175mm;
+             overflow: hidden;
+             position: relative;
+             box-shadow: 0 4px 15px rgba(0,0,0,0.15);
           }
 
-          /* Top Strip */
-          .front-header {
+          /* ===== FRONT CARD ===== */
+          .card-front {
+             background: linear-gradient(135deg, #FF9933 0%, #FFFFFF 40%, #FFFFFF 60%, #138808 100%);
+             border: 1.5px solid #eab308;
+             display: flex;
+             flex-direction: column;
+          }
+
+          /* Front: Top Bar */
+          .f-top {
+             padding: 8px 12px 4px;
              display: flex;
              justify-content: space-between;
-             align-items: center;
-             padding: 15px 20px 5px;
-             background: transparent;
+             align-items: flex-start;
           }
-          .header-branding {
+          .f-brand {
+             display: flex;
+             flex-direction: column;
+          }
+          .f-brand-row {
              display: flex;
              align-items: center;
-             gap: 10px;
+             gap: 5px;
           }
-          .header-logo { height: 35px; width: auto; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
-          .header-text { display: flex; flex-direction: column; }
-          .org-name {
-             font-size: 17px;
+          .f-logo { height: 18px; width: auto; }
+          .f-company {
+             font-size: 10px;
              font-weight: 900;
              color: #000;
              text-transform: uppercase;
-             line-height: 1;
-             letter-spacing: -0.5px;
+             letter-spacing: -0.3px;
           }
-          .org-sub {
-             font-size: 9px;
-             font-weight: 800;
-             color: #9a3412;
-             text-transform: uppercase;
-             letter-spacing: 0.5px;
-             margin-top: 2px;
+          .f-tagline {
+             font-size: 7px;
+             font-weight: 700;
+             color: #1f2937;
+             font-style: italic;
+             margin-top: 1px;
+             padding-left: 23px; /* Align under company name */
           }
-          .header-right-badge {
-             font-size: 10px;
+          .f-badge {
+             font-size: 7px;
              font-weight: 900;
              text-transform: uppercase;
              background: linear-gradient(90deg, #ea580c, #16a34a);
              color: white;
-             padding: 5px 14px;
-             border-radius: 20px;
-             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-             border: 2px solid #fff;
-             letter-spacing: 0.5px;
-             text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+             padding: 2px 8px;
+             border-radius: 10px;
+             box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+             border: 1px solid #fff;
+             letter-spacing: 0.3px;
           }
 
-          /* Main Body - Flex Row */
-          .front-body {
+          /* Front: Middle Row */
+          .f-middle {
              flex: 1;
              display: flex;
-             padding: 15px 20px;
-             gap: 15px;
-             align-items: center; /* Center vertically */
-             position: relative;
+             align-items: center;
+             padding: 4px 12px;
+             gap: 8px;
           }
-           
-          /* Watermark */
-          .bg-watermark {
-             position: absolute;
-             top: 50%;
-             left: 50%;
-             transform: translate(-50%, -50%) rotate(-20deg);
-             font-size: 50px;
-             font-weight: 900;
-             color: rgba(0,0,0,0.03);
-             pointer-events: none;
-             white-space: nowrap;
-             z-index: 0;
-          }
-
-          /* Col 1: Photo */
           .f-photo {
-             width: 90px;
-             height: 110px;
-             border-radius: 6px;
-             border: 2px solid #333;
+             width: 55px;
+             height: 65px;
+             border-radius: 4px;
+             border: 1.5px solid #333;
              overflow: hidden;
-             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-             z-index: 1;
              flex-shrink: 0;
+             background: #e5e7eb;
           }
           .f-photo img { width: 100%; height: 100%; object-fit: cover; }
-
-          /* Col 2: Details (Beside Photo) */
-          .f-details {
+          
+          .f-info {
              flex: 1;
              display: flex;
              flex-direction: column;
              justify-content: center;
-             z-index: 1;
           }
           .f-name {
-             font-size: 18px;
+             font-size: 11px;
              font-weight: 800;
              color: #000;
              text-transform: uppercase;
-             margin-bottom: 2px;
              line-height: 1.2;
           }
-          .f-id {
-             font-size: 13px;
-             font-weight: 700;
-             color: #15803d; /* Green ID */
-             margin-bottom: 8px;
-             font-family: monospace;
+          .f-city {
+             font-size: 8px;
+             font-weight: 600;
+             color: #374151;
+             margin-top: 1px;
           }
-          
-          .f-info-row {
-             font-size: 11px;
-             margin-bottom: 3px;
-             color: #1f2937;
-             display: flex;
-             align-items: baseline;
-          }
-          .f-label {
-             font-weight: 700;
-             width: 55px;
-             color: #555;
-             font-size: 10px;
-             text-transform: uppercase;
-          }
-          .f-val { font-weight: 600; color: #000; }
 
-          /* Col 3: QR (Right) */
           .f-qr {
-             width: 85px;
-             height: 85px;
+             width: 52px;
+             height: 52px;
              background: #fff;
-             padding: 4px;
+             padding: 2px;
              border: 1px solid #ddd;
+             border-radius: 4px;
              flex-shrink: 0;
              display: flex;
              justify-content: center;
              align-items: center;
-             z-index: 1;
           }
 
-          /* Bottom Strip (Red Line style -> Green/Orange) */
-          .front-footer {
-             border-top: 2px solid #138808; /* Green Line */
-             background: #fdfdfd;
-             padding: 8px 0;
+          /* Front: Bottom ID Bar */
+          .f-bottom {
+             background: rgba(0,0,0,0.05);
+             border-top: 1px solid rgba(0,0,0,0.08);
+             padding: 4px 12px;
              text-align: center;
           }
-          .footer-tagline {
-             font-size: 14px;
-             font-weight: 700;
-             color: #000;
-             font-style: italic;
-             margin-bottom: 2px;
-          }
-          .footer-sub {
-             font-size: 10px;
-             color: #666;
+          .f-id {
+             font-size: 11px;
+             font-weight: 800;
+             color: #15803d;
+             letter-spacing: 1px;
+             font-family: monospace;
           }
 
-
-          /* --- BACK SIDE --- */
+          /* ===== BACK CARD ===== */
           .card-back {
              background: #fff;
-             border: 1px solid #eaebed;
-             height: 320px;
+             border: 1px solid #e5e7eb;
              display: flex;
              flex-direction: column;
-             justify-content: space-between;
-             padding: 24px;
-             position: relative;
-          }
-          /* Strip on Back */
-          .back-top-strip {
-             position: absolute;
-             top: 20px;
-             left: 0;
-             width: 100%;
-             height: 4px;
-             background: linear-gradient(90deg, #FF9933, #FFFFFF, #138808);
           }
 
-          .back-header {
-             text-align: center;
-             margin-top: 10px;
-             margin-bottom: 20px;
+          /* Back: Top tri-color strip */
+          .b-strip {
+             height: 3px;
+             background: linear-gradient(90deg, #FF9933 33%, #FFFFFF 33%, #FFFFFF 66%, #138808 66%);
           }
-          .back-org {
-             font-size: 15px;
-             font-weight: 800;
-             text-transform: uppercase;
-             color: #111;
-             border-bottom: 1px solid #eee;
-             padding-bottom: 8px;
-             display: inline-block;
-          }
-          
-          .back-content {
+
+          /* Back: Address area */
+          .b-address-area {
              flex: 1;
+             padding: 10px 14px;
              display: flex;
              flex-direction: column;
-             gap: 12px;
+             justify-content: center;
           }
-          .b-row {
-             display: flex;
-             flex-direction: column;
-             gap: 2px;
+          .b-addr-label {
+             font-size: 7px;
+             font-weight: 700;
+             text-transform: uppercase;
+             color: #9ca3af;
+             margin-bottom: 4px;
           }
-          .b-label { font-size: 9px; text-transform: uppercase; font-weight: 700; color: #888; }
-          .b-val { font-size: 12px; font-weight: 600; color: #000; }
-
-          .validity-block {
-             background: #FFFbea;
-             border: 1px dashed #FCD34D;
-             padding: 8px;
-             text-align: center;
-             margin-top: 10px;
-             border-radius: 6px;
-          }
-          .v-label { font-size: 9px; font-weight: 700; color: #92400E; text-transform: uppercase; }
-          .v-date { font-size: 14px; font-weight: 800; color: #B45309; }
-
-          .back-footer-text {
-             text-align: center;
+          .b-addr-text {
              font-size: 9px;
-             color: #999;
-             margin-top: 15px;
+             font-weight: 500;
+             color: #1f2937;
+             line-height: 1.5;
           }
 
-          /* --- PAGE 2 Terms --- */
+          /* Back: Footer bar */
+          .b-footer {
+             border-top: 1px solid #e5e7eb;
+             background: #f9fafb;
+             padding: 5px 10px;
+             display: flex;
+             justify-content: space-between;
+             align-items: center;
+             gap: 4px;
+          }
+          .b-foot-item {
+             display: flex;
+             align-items: center;
+             gap: 3px;
+             font-size: 6px;
+             color: #6b7280;
+             font-weight: 600;
+          }
+          .b-foot-icon {
+             font-size: 8px;
+          }
+          .b-validity {
+             font-size: 7px;
+             font-weight: 800;
+             color: #B45309;
+             background: #FEF3C7;
+             padding: 2px 6px;
+             border-radius: 4px;
+             border: 1px solid #FCD34D;
+          }
+
+          /* ===== PAGE 2: Terms ===== */
           .terms-page {
              page-break-before: always;
-             background: #fff;
-             padding: 40px;
+             width: 100%;
+             max-width: 600px;
+             margin: 40px auto 0;
+             padding: 30px;
           }
           .terms-title {
-             font-size: 18px;
+             font-size: 16px;
              font-weight: 800;
              color: #138808;
              border-bottom: 2px solid #FF9933;
              padding-bottom: 8px;
-             margin-bottom: 20px;
+             margin-bottom: 15px;
           }
-          .t-group { margin-bottom: 20px; }
+          .t-group { margin-bottom: 18px; }
           .t-head {
-             font-size: 13px; font-weight: 700; color: #000; margin-bottom: 8px;
-             background: #f3f4f6; padding: 4px 8px; border-left: 3px solid #FF9933;
+             font-size: 12px; font-weight: 700; color: #000; margin-bottom: 6px;
+             background: #f3f4f6; padding: 3px 8px; border-left: 3px solid #FF9933;
           }
           .t-list { list-style: none; padding-left: 5px; }
           .t-list li {
-             position: relative; padding-left: 15px; margin-bottom: 6px;
-             font-size: 11px; line-height: 1.5; color: #444;
+             position: relative; padding-left: 14px; margin-bottom: 5px;
+             font-size: 10px; line-height: 1.5; color: #444;
           }
           .t-list li::before {
              content: "▪"; position: absolute; left: 0; color: #138808;
           }
-
         </style>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
       </head>
       <body>
         <div class="page-container">
            
-           <!-- FRONT CARD -->
-           <div class="card-shared card-front">
-              <!-- Header -->
-              <div class="front-header">
-                  <div class="header-branding">
-                      ${logoBase64 ? `<img src="${logoBase64}" class="header-logo" />` : ''}
-                      <div class="header-text">
-                          <div class="org-name">BHARATPEAK BUSINESS</div>
-                          <div class="org-sub">Business Auxiliary Services</div>
+           <!-- FRONT -->
+           <div class="card card-front">
+              <div class="f-top">
+                  <div class="f-brand">
+                      <div class="f-brand-row">
+                          ${logoBase64 ? `<img src="${logoBase64}" class="f-logo" />` : ''}
+                          <span class="f-company">Bharatpeak Business Pvt. Ltd.</span>
                       </div>
+                      <div class="f-tagline">"हम आपके साथ"</div>
                   </div>
-                  <div class="header-right-badge">${cardTitle}</div>
+                  <div class="f-badge">${cardTitle}</div>
               </div>
 
-              <!-- Body: Photo | Details | QR -->
-              <div class="front-body">
-                  <div class="bg-watermark">BHARAT PEAK</div>
-                  
+              <div class="f-middle">
                   <div class="f-photo">
                       ${photoBase64 ? `<img src="${photoBase64}" />` : ''}
                   </div>
-
-                  <div class="f-details">
+                  <div class="f-info">
                       <div class="f-name">${applicationData.personalDetails.fullName}</div>
-                      <div class="f-id">ID: ${applicationData.uniqueCode || 'PENDING'}</div>
-                      
-                      <div class="f-info-row">
-                          <span class="f-label">Mobile</span>
-                          <span class="f-val">${applicationData.personalDetails.mobile}</span>
-                      </div>
-                      <div class="f-info-row">
-                          <span class="f-label">Aadhaar</span>
-                          <span class="f-val">${applicationData.personalDetails.aadhaarNumber || 'PENDING'}</span>
-                      </div>
-                      <div class="f-info-row">
-                          <span class="f-label">City</span>
-                          <span class="f-val">${applicationData.personalDetails.city}</span>
-                      </div>
+                      <div class="f-city">${applicationData.personalDetails.city}, ${applicationData.personalDetails.state || ''}</div>
                   </div>
-
                   <div class="f-qr">
                       <div id="qrcode"></div>
                   </div>
               </div>
 
-              <!-- Footer Strip -->
-              <div class="front-footer">
-                  <div class="footer-tagline">“ हम आपके साथ ”</div>
-                  <div class="footer-sub">support@bharatpeakbusiness.com</div>
+              <div class="f-bottom">
+                  <div class="f-id">ID: ${applicationData.uniqueCode || 'PENDING'}</div>
               </div>
            </div>
 
-           <!-- BACK CARD -->
-           <div class="card-shared card-back">
-              <div class="back-top-strip"></div>
-              
-              <div class="back-header">
-                  <div class="back-org">Bharatpeak Business Services Pvt. Ltd.</div>
-                  <div style="font-size: 10px; color: #666; margin-top: 2px;">"हम आपके साथ"</div>
+           <!-- BACK -->
+           <div class="card card-back">
+              <div class="b-strip"></div>
+              <div class="b-address-area">
+                  <div class="b-addr-label">Address</div>
+                  <div class="b-addr-text">${address || `${applicationData.personalDetails.city}, ${applicationData.personalDetails.state || 'India'}`}</div>
               </div>
-
-              <div class="back-content">
-                  <div class="b-row">
-                      <div class="b-label">Registered Office</div>
-                      <div class="b-val">${applicationData.personalDetails.city || 'Head Office'}, ${applicationData.personalDetails.state || 'India'}</div>
+              <div class="b-footer">
+                  <div class="b-validity">${formattedExpiry}</div>
+                  <div class="b-foot-item"><span class="b-foot-icon">✉</span> support@bharatpeakbusiness.com</div>
+                  <div class="b-foot-item"><span class="b-foot-icon">☎</span> 88180 60903</div>
+                  <div class="b-foot-item">
+                      ${logoBase64 ? `<img src="${logoBase64}" style="height:10px;width:auto;" />` : ''}
                   </div>
-
-                  <div class="b-row">
-                      <div class="b-label">Customer Care</div>
-                      <div class="b-val">88180 60903</div>
-                  </div>
-                  
-                  <div class="b-row">
-                      <div class="b-label">Email & Website</div>
-                      <div class="b-val">support@bharatpeakbusiness.com</div>
-                      <div class="b-val">bharatpeakbusiness.com</div>
-                  </div>
-
-                  <div class="validity-block">
-                      <div class="v-label">Valid Upto</div>
-                      <div class="v-date">${formattedExpiry}</div>
-                  </div>
-              </div>
-
-              <div class="back-footer-text">
-                  If found, please return to the address above.
+                  <div class="b-foot-item"><span class="b-foot-icon">🌐</span> bharatpeakbusiness.com</div>
               </div>
            </div>
 
-           <!-- TERMS PAGE -->
+           <!-- PAGE 2: T&C -->
            <div class="terms-page">
                <div class="terms-title">Terms & Conditions / नियम एवं शर्तें</div>
                
@@ -465,8 +383,8 @@ const generateCardPDF = async (applicationData) => {
            try {
               new QRCode(document.getElementById("qrcode"), {
                  text: "${applicationData.uniqueCode || 'PENDING'}",
-                 width: 75,
-                 height: 75, // Smaller to fit
+                 width: 46,
+                 height: 46,
                  colorDark : "#000000",
                  colorLight : "#ffffff",
                  correctLevel : QRCode.CorrectLevel.M

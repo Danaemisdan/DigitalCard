@@ -29,6 +29,7 @@ const createApplication = async (req, res) => {
         const files = req.files || {};
         const documentPaths = {
             aadhaarPath: (files.aadhaar && files.aadhaar[0]) ? files.aadhaar[0].path : null,
+            aadhaarBackPath: (files.aadhaarBack && files.aadhaarBack[0]) ? files.aadhaarBack[0].path : null,
             panPath: (files.pan && files.pan[0]) ? files.pan[0].path : null,
             photoPath: (files.photo && files.photo[0]) ? files.photo[0].path : null,
         };
@@ -39,6 +40,7 @@ const createApplication = async (req, res) => {
             // Cleanup any files that WERE uploaded
             try {
                 if (documentPaths.aadhaarPath) fs.unlinkSync(documentPaths.aadhaarPath);
+                if (documentPaths.aadhaarBackPath) fs.unlinkSync(documentPaths.aadhaarBackPath);
                 if (documentPaths.panPath) fs.unlinkSync(documentPaths.panPath);
                 if (documentPaths.photoPath) fs.unlinkSync(documentPaths.photoPath);
             } catch (e) { }
@@ -65,12 +67,25 @@ const createApplication = async (req, res) => {
             panVerified = result.isVerified;
         }
 
+        // --- OCR Address from Aadhaar Back ---
+        let extractedAddress = '';
+        if (documentPaths.aadhaarBackPath) {
+            try {
+                const backResult = await verifyDocument(documentPaths.aadhaarBackPath, 'aadhaar_back');
+                extractedAddress = (backResult.extractedData && backResult.extractedData.address) || '';
+                console.log('Extracted Address from Aadhaar Back:', extractedAddress);
+            } catch (addrErr) {
+                console.error('Address extraction failed:', addrErr.message);
+            }
+        }
+
         // --- 2. Reject if OCR Verification Fails ---
         if (!aadhaarVerified || !panVerified) {
             console.log(`REJECTING: OCR failed. Aadhaar: ${aadhaarVerified}, PAN: ${panVerified}`);
             // Cleanup files
             try {
                 if (documentPaths.aadhaarPath) fs.unlinkSync(documentPaths.aadhaarPath);
+                if (documentPaths.aadhaarBackPath) fs.unlinkSync(documentPaths.aadhaarBackPath);
                 if (documentPaths.panPath) fs.unlinkSync(documentPaths.panPath);
                 if (documentPaths.photoPath) fs.unlinkSync(documentPaths.photoPath);
             } catch (cleanupError) { }
@@ -122,7 +137,7 @@ const createApplication = async (req, res) => {
 
         // --- 2. Create DB record ONLY if documents pass validation ---
         const application = new Application({
-            personalDetails: { fullName, email, mobile, city, state, gender: finalGender, aadhaarNumber: finalAadhaarNumber },
+            personalDetails: { fullName, email, mobile, city, state, gender: finalGender, aadhaarNumber: finalAadhaarNumber, address: extractedAddress },
             uniqueCode,
             documents: documentPaths,
             applicationType,
@@ -294,7 +309,7 @@ const deleteApplication = async (req, res) => {
         }
         // Cleanup uploaded files
         const docs = application.documents || {};
-        ['aadhaarPath', 'panPath', 'photoPath'].forEach(key => {
+        ['aadhaarPath', 'aadhaarBackPath', 'panPath', 'photoPath'].forEach(key => {
             if (docs[key]) {
                 try { fs.unlinkSync(docs[key]); } catch (e) { /* file may not exist */ }
             }

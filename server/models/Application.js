@@ -9,10 +9,12 @@ const applicationSchema = mongoose.Schema({
         state: { type: String, required: true },
         gender: { type: String, enum: ['Male', 'Female', 'Other'], required: true },
         aadhaarNumber: { type: String, required: true },
+        address: { type: String, required: false, default: '' },
     },
     uniqueCode: { type: String, required: false },
     documents: {
         aadhaarPath: { type: String, required: false },
+        aadhaarBackPath: { type: String, required: false },
         panPath: { type: String, required: false },
         photoPath: { type: String, required: false },
     },

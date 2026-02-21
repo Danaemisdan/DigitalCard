@@ -151,6 +151,50 @@ const verifyDocument = async (filePath, type) => {
                     isVerified = false;
                 }
             }
+        } else if (type === 'aadhaar_back') {
+            // Extract ADDRESS from back of Aadhaar card
+            // The back typically has: Address in Hindi + English, pincode, barcode
+            const lines = engResult.data.text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+
+            // Try to find address block - look for "Address" keyword or pincode pattern
+            let addressLines = [];
+            let capturing = false;
+
+            for (const line of lines) {
+                const lower = line.toLowerCase();
+                // Start capturing after "Address" keyword
+                if (lower.includes('address') || lower.includes('पता')) {
+                    capturing = true;
+                    // Remove the "Address:" prefix if present
+                    const cleaned = line.replace(/^.*address\s*:?\s*/i, '').replace(/^.*पता\s*:?\s*/i, '').trim();
+                    if (cleaned.length > 2) addressLines.push(cleaned);
+                    continue;
+                }
+                if (capturing) {
+                    // Stop at barcode area or very short garbled lines
+                    if (line.length < 3 || /^\d{1,2}$/.test(line)) break;
+                    // Stop if we hit a pincode-only line (6 digits)
+                    addressLines.push(line);
+                    if (/\d{6}/.test(line)) break; // Pincode found, stop
+                }
+            }
+
+            if (addressLines.length > 0) {
+                extractedData.address = addressLines.join(', ').replace(/\s+/g, ' ').trim();
+                console.log('Extracted Address:', extractedData.address);
+            } else {
+                // Fallback: just grab all lines that look like address text (contain commas, digits)
+                const fallbackAddr = lines
+                    .filter(l => l.length > 10 && (/\d/.test(l) || l.includes(',') || l.includes('-')))
+                    .slice(0, 4)
+                    .join(', ');
+                if (fallbackAddr.length > 10) {
+                    extractedData.address = fallbackAddr;
+                    console.log('Fallback Address:', extractedData.address);
+                }
+            }
+
+            isVerified = true; // Back side always passes verification
         }
 
         return { isVerified, extractedData };

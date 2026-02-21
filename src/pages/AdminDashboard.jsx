@@ -251,6 +251,8 @@ const AdminDashboard = () => {
                                         <div className="text-slate-900 font-medium">{viewTarget.personalDetails?.gender}</div>
                                         <div className="text-slate-500">Aadhaar No.</div>
                                         <div className="text-slate-900 font-medium">{viewTarget.personalDetails?.aadhaarNumber}</div>
+                                        <div className="text-slate-500">Address</div>
+                                        <div className="text-slate-900 font-medium text-xs">{viewTarget.personalDetails?.address || 'Not extracted'}</div>
                                     </div>
                                 </div>
                                 <div className="space-y-4">
@@ -272,7 +274,7 @@ const AdminDashboard = () => {
                                 <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider border-b pb-2">Uploaded Documents</h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     {/* Helper to get clean URL */}
-                                    {['aadhaarPath', 'panPath', 'photoPath'].map((docKey) => {
+                                    {['aadhaarPath', 'aadhaarBackPath', 'panPath', 'photoPath'].map((docKey) => {
                                         const pathVal = viewTarget.documents?.[docKey];
                                         const fileName = docKey.replace('Path', '');
                                         // Assume pathVal is 'uploads/filename.ext'
