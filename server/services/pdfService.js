@@ -73,7 +73,7 @@ const generateCardPDF = async (applicationData) => {
           .card-front {
              background: linear-gradient(135deg, #FF9933 0%, #FFFFFF 40%, #FFFFFF 60%, #138808 100%); /* Vibrant Indian Flag tint */
              border: 2px solid #eab308; /* Premium Gold-ish border */
-             min-height: 280px;
+             height: 320px;
              display: flex;
              flex-direction: column;
              box-shadow: 0 8px 25px rgba(0,0,0,0.15); /* Stronger shadow */
@@ -239,7 +239,7 @@ const generateCardPDF = async (applicationData) => {
           .card-back {
              background: #fff;
              border: 1px solid #eaebed;
-             min-height: 280px;
+             height: 320px;
              display: flex;
              flex-direction: column;
              justify-content: space-between;
