@@ -21,7 +21,7 @@ const getAllApplications = async (req, res) => {
 // @access  Public
 const createApplication = async (req, res) => {
     try {
-        const { fullName, email, mobile, city, state, gender, aadhaarNumber, applicationType, referralCode } = req.body;
+        const { fullName, email, mobile, city, state, gender, dob, aadhaarNumber, applicationType, referralCode } = req.body;
 
 
 
@@ -104,6 +104,7 @@ const createApplication = async (req, res) => {
         // Auto-fill from OCR if valid
         const finalGender = gender || extractedAadhaar.gender || 'Other';
         const finalAadhaarNumber = aadhaarNumber || extractedAadhaar.aadhaarNumber || 'PENDING';
+        const finalDOB = dob || extractedAadhaar.dob || '';
 
         // Generate Unique Code
         const mobileLast4 = mobile ? mobile.slice(-4) : '0000';
@@ -137,7 +138,7 @@ const createApplication = async (req, res) => {
 
         // --- 2. Create DB record ONLY if documents pass validation ---
         const application = new Application({
-            personalDetails: { fullName, email, mobile, city, state, gender: finalGender, aadhaarNumber: finalAadhaarNumber, address: extractedAddress },
+            personalDetails: { fullName, email, mobile, city, state, gender: finalGender, dob: finalDOB, aadhaarNumber: finalAadhaarNumber, address: extractedAddress },
             uniqueCode,
             documents: documentPaths,
             applicationType,

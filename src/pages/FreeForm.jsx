@@ -14,6 +14,7 @@ const FreeForm = () => {
         city: '',
         state: '',
         referralCode: '',
+        dob: '',
     });
     const [files, setFiles] = useState({
         aadhaar: null,
@@ -81,6 +82,7 @@ const FreeForm = () => {
                             ...prev,
                             aadhaarNumber: result.extractedData.aadhaarNumber || prev.aadhaarNumber,
                             gender: result.extractedData.gender || prev.gender,
+                            dob: result.extractedData.dob || prev.dob,
                         }));
                     }
                 } catch (err) {
@@ -117,6 +119,7 @@ const FreeForm = () => {
             data.append('state', formData.state);
             data.append('referralCode', formData.referralCode);
             data.append('gender', formData.gender);
+            data.append('dob', formData.dob);
             data.append('aadhaarNumber', formData.aadhaarNumber || 'PENDING'); // Allow manual override
             data.append('applicationType', 'Free');
 
@@ -305,7 +308,7 @@ const FreeForm = () => {
                             <FileUpload label="Aadhaar Card (Front)" required onFileSelect={(f) => handleFileSelect('aadhaar', f)} />
                             <FileUpload label="Aadhaar Card (Back)" required onFileSelect={(f) => handleFileSelect('aadhaarBack', f)} />
                             <FileUpload label="PAN Card" required onFileSelect={(f) => handleFileSelect('pan', f)} />
-                            <FileUpload label="Photo" required accept="image/*" onFileSelect={(f) => handleFileSelect('photo', f)} />
+                            <FileUpload label="Photo" required accept="image/*,.pdf" onFileSelect={(f) => handleFileSelect('photo', f)} />
                         </div>
                     </div>
 

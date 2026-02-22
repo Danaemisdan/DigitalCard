@@ -21,9 +21,18 @@ const generateCardPDF = async (applicationData) => {
          logoBase64 = `data:image/png;base64,${fs.readFileSync(logoPngPath).toString('base64')}`;
       }
 
-      const photoBase64 = applicationData.documents.photoPath
-         ? `data:image/png;base64,${fs.readFileSync(applicationData.documents.photoPath).toString('base64')}`
-         : '';
+      // Handle PDF photo upload edge case gracefully
+      let photoBase64 = '';
+      let isPdfPhoto = false;
+      if (applicationData.documents.photoPath) {
+         if (applicationData.documents.photoPath.toLowerCase().endsWith('.pdf')) {
+            isPdfPhoto = true;
+            // We can embed it as object for the PDF render
+            photoBase64 = `data:application/pdf;base64,${fs.readFileSync(applicationData.documents.photoPath).toString('base64')}`;
+         } else {
+            photoBase64 = `data:image/png;base64,${fs.readFileSync(applicationData.documents.photoPath).toString('base64')}`;
+         }
+      }
 
       const isPremier = applicationData.applicationType === 'Premier' || applicationData.applicationType === 'Premium';
       const validityPeriod = isPremier ? '1 Year' : '3 Months';
@@ -62,8 +71,6 @@ const generateCardPDF = async (applicationData) => {
           }
           
           /* ATM CARD: 85.6mm x 53.98mm ≈ 3.37" x 2.125" */
-          /* At 96dpi print: 323px x 204px. Scale up 2x for quality = 646px x 408px */
-          /* Puppeteer uses 96dpi, so we use mm directly */
           .card {
              width: 85.6mm;
              height: 53.98mm;
@@ -99,18 +106,18 @@ const generateCardPDF = async (applicationData) => {
           }
           .f-logo { height: 18px; width: auto; }
           .f-company {
-             font-size: 10px;
+             font-size: 13px;
              font-weight: 900;
              color: #000;
              text-transform: uppercase;
              letter-spacing: -0.3px;
           }
           .f-tagline {
-             font-size: 7px;
+             font-size: 8px;
              font-weight: 700;
              color: #1f2937;
              font-style: italic;
-             margin-top: 1px;
+             margin-top: -1px;
              padding-left: 23px; /* Align under company name */
           }
           .f-badge {
@@ -142,8 +149,15 @@ const generateCardPDF = async (applicationData) => {
              overflow: hidden;
              flex-shrink: 0;
              background: #e5e7eb;
+             display: flex;
+             align-items: center;
+             justify-content: center;
+             font-size: 7px;
+             color: #888;
+             text-align: center;
           }
           .f-photo img { width: 100%; height: 100%; object-fit: cover; }
+          .f-photo object { width: 100%; height: 100%; }
           
           .f-info {
              flex: 1;
@@ -152,17 +166,26 @@ const generateCardPDF = async (applicationData) => {
              justify-content: center;
           }
           .f-name {
-             font-size: 11px;
+             font-size: 12px;
              font-weight: 800;
              color: #000;
              text-transform: uppercase;
              line-height: 1.2;
+             margin-bottom: 3px;
           }
-          .f-city {
-             font-size: 8px;
+          .f-detail-row {
+             font-size: 9px;
+             margin-top: 2px;
+             display: flex;
+             gap: 4px;
+          }
+          .f-label {
              font-weight: 600;
              color: #374151;
-             margin-top: 1px;
+          }
+          .f-val {
+             font-weight: 700;
+             color: #000;
           }
 
           .f-qr {
@@ -207,10 +230,19 @@ const generateCardPDF = async (applicationData) => {
              background: linear-gradient(90deg, #FF9933 33%, #FFFFFF 33%, #FFFFFF 66%, #138808 66%);
           }
 
+          .b-company {
+             text-align: center;
+             font-size: 10px;
+             font-weight: 800;
+             color: #1f2937;
+             margin-top: 6px;
+             letter-spacing: 0.5px;
+          }
+
           /* Back: Address area */
           .b-address-area {
              flex: 1;
-             padding: 10px 14px;
+             padding: 6px 14px;
              display: flex;
              flex-direction: column;
              justify-content: center;
@@ -229,15 +261,36 @@ const generateCardPDF = async (applicationData) => {
              line-height: 1.5;
           }
 
+          /* Back: Footer container spacing */
+          .b-footer-container {
+             display: flex;
+             flex-direction: column;
+             margin-top: auto;
+          }
+          .b-validity-wrapper {
+             padding-left: 10px;
+             margin-bottom: 4px;
+          }
+          .b-validity {
+             font-size: 7px;
+             font-weight: 800;
+             color: #B45309;
+             background: #FEF3C7;
+             padding: 2px 6px;
+             border-radius: 4px;
+             border: 1px solid #FCD34D;
+             display: inline-block;
+          }
+          
           /* Back: Footer bar */
           .b-footer {
              border-top: 1px solid #e5e7eb;
              background: #f9fafb;
              padding: 5px 10px;
              display: flex;
-             justify-content: space-between;
+             justify-content: flex-end; /* All aligned right since validity moved up */
              align-items: center;
-             gap: 4px;
+             gap: 8px;
           }
           .b-foot-item {
              display: flex;
@@ -249,15 +302,6 @@ const generateCardPDF = async (applicationData) => {
           }
           .b-foot-icon {
              font-size: 8px;
-          }
-          .b-validity {
-             font-size: 7px;
-             font-weight: 800;
-             color: #B45309;
-             background: #FEF3C7;
-             padding: 2px 6px;
-             border-radius: 4px;
-             border: 1px solid #FCD34D;
           }
 
           /* ===== PAGE 2: Terms ===== */
@@ -301,20 +345,24 @@ const generateCardPDF = async (applicationData) => {
                   <div class="f-brand">
                       <div class="f-brand-row">
                           ${logoBase64 ? `<img src="${logoBase64}" class="f-logo" />` : ''}
-                          <span class="f-company">Bharatpeak Business Pvt. Ltd.</span>
+                          <span class="f-company">Bharat Peak</span>
                       </div>
-                      <div class="f-tagline">"हम आपके साथ"</div>
+                      <div class="f-tagline">हम आपके साथ</div>
                   </div>
                   <div class="f-badge">${cardTitle}</div>
               </div>
 
               <div class="f-middle">
                   <div class="f-photo">
-                      ${photoBase64 ? `<img src="${photoBase64}" />` : ''}
+                      ${photoBase64 ?
+            isPdfPhoto ? `<object data="${photoBase64}" type="application/pdf">PDF</object>`
+               : `<img src="${photoBase64}" />`
+            : 'No Photo'}
                   </div>
                   <div class="f-info">
                       <div class="f-name">${applicationData.personalDetails.fullName}</div>
-                      <div class="f-city">${applicationData.personalDetails.city}, ${applicationData.personalDetails.state || ''}</div>
+                      <div class="f-detail-row"><span class="f-label">DOB:</span> <span class="f-val">${applicationData.personalDetails.dob || 'N/A'}</span></div>
+                      <div class="f-detail-row"><span class="f-label">Gender:</span> <span class="f-val">${applicationData.personalDetails.gender || '-'}</span></div>
                   </div>
                   <div class="f-qr">
                       <div id="qrcode"></div>
@@ -329,18 +377,24 @@ const generateCardPDF = async (applicationData) => {
            <!-- BACK -->
            <div class="card card-back">
               <div class="b-strip"></div>
+              <div class="b-company">Bharat Peak Business PVT LTD</div>
               <div class="b-address-area">
                   <div class="b-addr-label">Address</div>
                   <div class="b-addr-text">${address || `${applicationData.personalDetails.city}, ${applicationData.personalDetails.state || 'India'}`}</div>
               </div>
-              <div class="b-footer">
-                  <div class="b-validity">${formattedExpiry}</div>
-                  <div class="b-foot-item"><span class="b-foot-icon">✉</span> support@bharatpeakbusiness.com</div>
-                  <div class="b-foot-item"><span class="b-foot-icon">☎</span> 88180 60903</div>
-                  <div class="b-foot-item">
-                      ${logoBase64 ? `<img src="${logoBase64}" style="height:10px;width:auto;" />` : ''}
+              
+              <div class="b-footer-container">
+                  <div class="b-validity-wrapper">
+                      <span class="b-validity">${formattedExpiry}</span>
                   </div>
-                  <div class="b-foot-item"><span class="b-foot-icon">🌐</span> bharatpeakbusiness.com</div>
+                  <div class="b-footer">
+                      <div class="b-foot-item"><span class="b-foot-icon">✉</span> support@bharatpeakbusiness.com</div>
+                      <div class="b-foot-item"><span class="b-foot-icon">☎</span> 88180 60903</div>
+                      <div class="b-foot-item">
+                          ${logoBase64 ? `<img src="${logoBase64}" style="height:10px;width:auto;" />` : ''}
+                      </div>
+                      <div class="b-foot-item"><span class="b-foot-icon">🌐</span> bharatpeakbusiness.com</div>
+                  </div>
               </div>
            </div>
 
@@ -382,7 +436,7 @@ const generateCardPDF = async (applicationData) => {
         <script>
            try {
               new QRCode(document.getElementById("qrcode"), {
-                 text: "${applicationData.uniqueCode || 'PENDING'}",
+                 text: "https://application.bharatpeakbusiness.com",
                  width: 46,
                  height: 46,
                  colorDark : "#000000",

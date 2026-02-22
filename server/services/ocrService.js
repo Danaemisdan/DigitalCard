@@ -1,6 +1,7 @@
 const Tesseract = require('tesseract.js');
 const fs = require('fs');
 const sharp = require('sharp');
+const pdfParse = require('pdf-parse');
 
 // Preprocess image to improve OCR accuracy
 const preprocessImage = async (filePath) => {
@@ -24,27 +25,42 @@ const verifyDocument = async (filePath, type) => {
     try {
         console.log(`Starting OCR for ${type} at ${filePath}`);
 
-        let imageSource = filePath;
-        try {
-            imageSource = await preprocessImage(filePath);
-        } catch (procError) {
-            console.warn('Preprocessing failed, using original file:', procError);
-        }
-
-        // Run OCR in both English and Telugu with improved error handling
-        const [engResult, telResult] = await Promise.all([
-            Tesseract.recognize(imageSource, 'eng').catch(e => { console.error('Eng OCR failed:', e); return { data: { text: '' } }; }),
-            type === 'aadhaar'
-                ? Tesseract.recognize(imageSource, 'tel').catch(e => { console.warn('Tel OCR failed (likely missing lang data):', e.message); return { data: { text: '' } }; })
-                : Promise.resolve({ data: { text: '' } }),
-        ]);
-
-        const combinedText = `${engResult.data.text} ${telResult.data.text}`;
-        console.log(`OCR (eng) for ${type}:`, engResult.data.text.substring(0, 200));
-
-        const cleanText = combinedText.toLowerCase();
-        let isVerified = false;
+        let cleanText = '';
         let extractedData = {};
+        let isVerified = false;
+
+        let isPdf = filePath.toLowerCase().endsWith('.pdf');
+        if (isPdf) {
+            console.log('Document is PDF, extracting text with pdf-parse...');
+            try {
+                let dataBuffer = fs.readFileSync(filePath);
+                let data = await pdfParse(dataBuffer);
+                cleanText = (data.text || '').toLowerCase();
+                console.log(`Extracted PDF text:`, cleanText.substring(0, 200));
+            } catch (err) {
+                console.error('PDF parsing failed:', err);
+            }
+        } else {
+            let imageSource = filePath;
+            try {
+                imageSource = await preprocessImage(filePath);
+            } catch (procError) {
+                console.warn('Preprocessing failed, using original file:', procError);
+            }
+
+            // Run OCR in both English and Telugu with improved error handling
+            const [engResult, telResult] = await Promise.all([
+                Tesseract.recognize(imageSource, 'eng').catch(e => { console.error('Eng OCR failed:', e); return { data: { text: '' } }; }),
+                type === 'aadhaar'
+                    ? Tesseract.recognize(imageSource, 'tel').catch(e => { console.warn('Tel OCR failed (likely missing lang data):', e.message); return { data: { text: '' } }; })
+                    : Promise.resolve({ data: { text: '' } }),
+            ]);
+
+            const combinedText = `${engResult.data.text} ${telResult.data.text}`;
+            console.log(`OCR (eng) for ${type}:`, engResult.data.text.substring(0, 200));
+
+            cleanText = combinedText.toLowerCase();
+        }
 
         if (type === 'aadhaar') {
             // Aggressive normalization for common OCR digit errors
@@ -106,6 +122,13 @@ const verifyDocument = async (filePath, type) => {
             const hasDOB = cleanText.includes('dob') || cleanText.includes('year of birth') || /\d{4}/.test(cleanText);
             const hasAnyDigits = /\d{4}/.test(cleanText);
 
+            // Extract DOB
+            const dobMatch = cleanText.match(/\b(\d{2}[/\-]\d{2}[/\-]\d{4}|\d{4})\b/);
+            if (dobMatch) {
+                extractedData.dob = dobMatch[0];
+                console.log('Extracted DOB:', extractedData.dob);
+            }
+
             if (hasAadhaarNumber || hasEnglishKeyword) {
                 isVerified = true;
             } else if (hasGender && hasAnyDigits) {
@@ -153,8 +176,8 @@ const verifyDocument = async (filePath, type) => {
             }
         } else if (type === 'aadhaar_back') {
             // Extract ADDRESS from back of Aadhaar card
-            // The back typically has: Address in Hindi + English, pincode, barcode
-            const lines = engResult.data.text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+            // If it's a PDF, cleanText is what we have
+            const lines = cleanText.split('\n').map(l => l.trim()).filter(l => l.length > 3);
 
             // Try to find address block - look for "Address" keyword or pincode pattern
             let addressLines = [];

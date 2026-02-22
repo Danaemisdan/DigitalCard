@@ -8,6 +8,7 @@ const applicationSchema = mongoose.Schema({
         city: { type: String, required: true },
         state: { type: String, required: true },
         gender: { type: String, enum: ['Male', 'Female', 'Other'], required: true },
+        dob: { type: String, required: false, default: '' },
         aadhaarNumber: { type: String, required: true },
         address: { type: String, required: false, default: '' },
     },

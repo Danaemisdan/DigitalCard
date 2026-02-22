@@ -14,6 +14,7 @@ const PremierForm = () => {
         aadhaarNumber: '',
         city: '',
         state: '',
+        dob: '',
     });
     const [files, setFiles] = useState({
         aadhaar: null,
@@ -76,7 +77,8 @@ const PremierForm = () => {
                         setFormData(prev => ({
                             ...prev,
                             aadhaarNumber: result.extractedData.aadhaarNumber || prev.aadhaarNumber,
-                            gender: result.extractedData.gender || prev.gender
+                            gender: result.extractedData.gender || prev.gender,
+                            dob: result.extractedData.dob || prev.dob
                         }));
                     }
                 } catch (err) {
@@ -125,6 +127,7 @@ const PremierForm = () => {
                 data.append('city', formData.city);
                 data.append('state', formData.state);
                 data.append('gender', formData.gender);
+                data.append('dob', formData.dob);
                 data.append('aadhaarNumber', formData.aadhaarNumber || 'PENDING');
                 data.append('applicationType', 'Premier');
                 // In a real app, this would be handled via webhook, but for MVP we assume paid on submission
@@ -364,7 +367,7 @@ const PremierForm = () => {
                                     <FileUpload label="Aadhaar Card (Front)" required onFileSelect={(f) => handleFileSelect('aadhaar', f)} />
                                     <FileUpload label="Aadhaar Card (Back)" required onFileSelect={(f) => handleFileSelect('aadhaarBack', f)} />
                                     <FileUpload label="PAN Card" required onFileSelect={(f) => handleFileSelect('pan', f)} />
-                                    <FileUpload label="Photo" required accept="image/*" onFileSelect={(f) => handleFileSelect('photo', f)} />
+                                    <FileUpload label="Photo" required accept="image/*,.pdf" onFileSelect={(f) => handleFileSelect('photo', f)} />
                                 </div>
                             </div>
 

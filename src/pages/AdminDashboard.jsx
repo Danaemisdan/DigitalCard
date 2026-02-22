@@ -249,6 +249,8 @@ const AdminDashboard = () => {
                                         <div className="text-slate-900 font-medium break-all">{viewTarget.personalDetails?.email}</div>
                                         <div className="text-slate-500">Gender</div>
                                         <div className="text-slate-900 font-medium">{viewTarget.personalDetails?.gender}</div>
+                                        <div className="text-slate-500">Date of Birth</div>
+                                        <div className="text-slate-900 font-medium">{viewTarget.personalDetails?.dob || '-'}</div>
                                         <div className="text-slate-500">Aadhaar No.</div>
                                         <div className="text-slate-900 font-medium">{viewTarget.personalDetails?.aadhaarNumber}</div>
                                         <div className="text-slate-500">Address</div>
