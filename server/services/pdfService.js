@@ -41,7 +41,7 @@ const generateCardPDF = async (applicationData) => {
       const expiryDate = isPremier
          ? new Date(new Date().setFullYear(new Date().getFullYear() + 1))
          : new Date(new Date().setMonth(new Date().getMonth() + 3));
-      const formattedExpiry = expiryDate.toLocaleDateString('en-GB');
+      const formattedExpiry = `EXP DATE : ${expiryDate.toLocaleDateString('en-GB')}`;
 
       // Address from Aadhaar back OCR
       const address = applicationData.personalDetails.address || '';
