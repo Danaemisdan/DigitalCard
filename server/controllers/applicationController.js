@@ -21,7 +21,7 @@ const getAllApplications = async (req, res) => {
 // @access  Public
 const createApplication = async (req, res) => {
     try {
-        const { fullName, email, mobile, city, state, gender, dob, aadhaarNumber, applicationType, referralCode } = req.body;
+        const { fullName, email, mobile, city, state, gender, dob, address, aadhaarNumber, applicationType, referralCode } = req.body;
 
 
 
@@ -136,9 +136,11 @@ const createApplication = async (req, res) => {
             }
         }
 
+        const finalAddress = address || extractedAddress || '';
+
         // --- 2. Create DB record ONLY if documents pass validation ---
         const application = new Application({
-            personalDetails: { fullName, email, mobile, city, state, gender: finalGender, dob: finalDOB, aadhaarNumber: finalAadhaarNumber, address: extractedAddress },
+            personalDetails: { fullName, email, mobile, city, state, gender: finalGender, dob: finalDOB, aadhaarNumber: finalAadhaarNumber, address: finalAddress },
             uniqueCode,
             documents: documentPaths,
             applicationType,

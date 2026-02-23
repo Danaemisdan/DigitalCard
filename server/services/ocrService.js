@@ -105,7 +105,10 @@ const verifyDocument = async (filePath, type) => {
             }
 
             // --- Name extraction (Optimistic) ---
-            const lines = engResult.data.text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+            const cleanLines = engResult.data.text.split('\n')
+                .map(l => l.replace(/[^\w\s,\-\/\.\:\&]/g, ' ').replace(/\s+/g, ' ').trim())
+                .filter(l => l.length > 2);
+
             // ... (Name extraction logic remains same as before) ...
 
             // --- RELAXED FALLBACK LOGIC ---
@@ -122,10 +125,10 @@ const verifyDocument = async (filePath, type) => {
             const hasDOB = cleanText.includes('dob') || cleanText.includes('year of birth') || /\d{4}/.test(cleanText);
             const hasAnyDigits = /\d{4}/.test(cleanText);
 
-            // Extract DOB
-            const dobMatch = cleanText.match(/\b(\d{2}[/\-]\d{2}[/\-]\d{4}|\d{4})\b/);
+            // Extract DOB (Handling spacing like 01 / 01 / 1990)
+            const dobMatch = cleanText.match(/\b(\d{2}\s*[/\\-]\s*\d{2}\s*[/\\-]\s*\d{4}|\d{4})\b/);
             if (dobMatch) {
-                extractedData.dob = dobMatch[0];
+                extractedData.dob = dobMatch[0].replace(/\s+/g, '');
                 console.log('Extracted DOB:', extractedData.dob);
             }
 
@@ -183,32 +186,33 @@ const verifyDocument = async (filePath, type) => {
             let addressLines = [];
             let capturing = false;
 
-            for (const line of lines) {
+            // Remove purely garbled/non-Latin long lines
+            const cleanLines = lines.map(l => l.replace(/[^\w\s,\-\/\.\:\&]/g, ' ').replace(/\s+/g, ' ').trim())
+                .filter(l => l.length > 3);
+
+            for (const line of cleanLines) {
                 const lower = line.toLowerCase();
                 // Start capturing after "Address" keyword
-                if (lower.includes('address') || lower.includes('पता')) {
+                if (lower.includes('address') || lower.includes('addres') || lower.match(/\b(w\/o|s\/o|d\/o|c\/o)\b/)) {
                     capturing = true;
                     // Remove the "Address:" prefix if present
-                    const cleaned = line.replace(/^.*address\s*:?\s*/i, '').replace(/^.*पता\s*:?\s*/i, '').trim();
+                    const cleaned = line.replace(/^.*address\s*:?\s*/i, '').trim();
                     if (cleaned.length > 2) addressLines.push(cleaned);
                     continue;
                 }
                 if (capturing) {
-                    // Stop at barcode area or very short garbled lines
-                    if (line.length < 3 || /^\d{1,2}$/.test(line)) break;
-                    // Stop if we hit a pincode-only line (6 digits)
                     addressLines.push(line);
                     if (/\d{6}/.test(line)) break; // Pincode found, stop
                 }
             }
 
             if (addressLines.length > 0) {
-                extractedData.address = addressLines.join(', ').replace(/\s+/g, ' ').trim();
+                extractedData.address = addressLines.join(', ').replace(/, \s*,/g, ',').replace(/\s+/g, ' ').trim();
                 console.log('Extracted Address:', extractedData.address);
             } else {
-                // Fallback: just grab all lines that look like address text (contain commas, digits)
-                const fallbackAddr = lines
-                    .filter(l => l.length > 10 && (/\d/.test(l) || l.includes(',') || l.includes('-')))
+                // Fallback: grab lines having state-like patterns or pincodes
+                const fallbackAddr = cleanLines
+                    .filter(l => l.length > 10 && (/\d{6}/.test(l) || l.includes('dist') || l.includes('-')))
                     .slice(0, 4)
                     .join(', ');
                 if (fallbackAddr.length > 10) {
