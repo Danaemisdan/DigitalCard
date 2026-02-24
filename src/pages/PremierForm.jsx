@@ -360,6 +360,45 @@ const PremierForm = () => {
                                 />
                             </div>
 
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-800 mb-2">DOB (Optional - OCR Auto-fill)</label>
+                                    <input
+                                        type="text"
+                                        name="dob"
+                                        value={formData.dob || ''}
+                                        onChange={handleChange}
+                                        placeholder="DD/MM/YYYY"
+                                        className="bg-slate-50 border border-slate-200 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all placeholder-slate-400"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-800 mb-2">Gender (Optional - OCR Auto-fill)</label>
+                                    <select
+                                        name="gender"
+                                        value={formData.gender || ''}
+                                        onChange={handleChange}
+                                        className="bg-slate-50 border border-slate-200 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all"
+                                    >
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-slate-800 mb-2">Full Address (Optional - OCR Auto-fill)</label>
+                                <textarea
+                                    name="address"
+                                    rows="2"
+                                    value={formData.address || ''}
+                                    onChange={handleChange}
+                                    placeholder="Type here to override the Aadhaar back scanner"
+                                    className="bg-slate-50 border border-slate-200 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-primary focus:ring-1 focus:ring-brand-primary transition-all placeholder-slate-400 resize-none"
+                                ></textarea>
+                            </div>
 
                             <div className="border-t border-slate-100 pt-8">
                                 <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">

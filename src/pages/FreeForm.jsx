@@ -273,6 +273,46 @@ const FreeForm = () => {
                     </div>
 
 
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold text-brand-teal mb-2">DOB (Optional - OCR Auto-fill)</label>
+                            <input
+                                type="text"
+                                name="dob"
+                                value={formData.dob || ''}
+                                onChange={handleChange}
+                                placeholder="DD/MM/YYYY"
+                                className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-brand-teal mb-2">Gender (Optional - OCR Auto-fill)</label>
+                            <select
+                                name="gender"
+                                value={formData.gender || ''}
+                                onChange={handleChange}
+                                className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all"
+                            >
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-bold text-brand-teal mb-2">Full Address (Optional - OCR Auto-fill)</label>
+                        <textarea
+                            name="address"
+                            rows="2"
+                            value={formData.address || ''}
+                            onChange={handleChange}
+                            placeholder="Type here to override the Aadhaar back scanner"
+                            className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400 resize-none"
+                        ></textarea>
+                    </div>
+
                     <div className="bg-brand-cream rounded-xl p-6 border border-brand-teal/10 space-y-4">
                         <div>
                             <label className="block text-sm font-bold text-brand-teal mb-2">Referral Code (Mandatory)</label>

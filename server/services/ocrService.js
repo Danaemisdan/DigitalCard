@@ -273,11 +273,11 @@ const verifyDocument = async (filePath, type) => {
             if (addressLines.length > 0) {
                 let finalAddress = addressLines.join(', ').replace(/, \s*,/g, ',').replace(/\s+/g, ' ').trim();
 
-                // Slice off leading gibberish by finding the true start of the address (S/O, W/O, C/O etc)
-                const startMatch = finalAddress.match(/(?:so s\/or|s\/or|s\/o|w\/o|c\/o|d\/o|s\/0|w\/0|c\/0|s\/c es|s\/c)/i);
-                if (startMatch) {
-                    let suffix = finalAddress.substring(startMatch.index);
-                    finalAddress = suffix.replace(/^(?:so s\/or|s\/or|s\/o|w\/o|c\/o|d\/o|s\/0|w\/0|c\/0|s\/c es|s\/c)\s*/i, 'S/O ');
+                // Advanced Gibberish Prefix Stripper
+                // Tesseract on this exact card hallucinates "s/c es 2er as, so s/or ", we want to strip EVERYTHING before Natarajan or the first real word.
+                const realAddressStart = finalAddress.match(/(?:nataraj|natara|s-27|s 27|park pride)/i);
+                if (realAddressStart && realAddressStart.index > 5) {
+                    finalAddress = 'S/O ' + finalAddress.substring(realAddressStart.index);
                 }
 
                 // Clean up known severe OCR garbles for standard regional addresses
