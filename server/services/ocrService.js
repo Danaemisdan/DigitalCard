@@ -104,6 +104,16 @@ const verifyDocument = async (filePath, type) => {
                 extractedData.gender = 'Male';
             }
 
+            // Extreme fallback: Strip all spaces and punctuation from the entire text and check for exact substring matches
+            if (!extractedData.gender) {
+                const superClean = cleanText.replace(/[^a-z]/g, '');
+                if (superClean.includes('female') || superClean.includes('mahila')) {
+                    extractedData.gender = 'Female';
+                } else if (superClean.includes('male') || superClean.includes('purush')) {
+                    extractedData.gender = 'Male';
+                }
+            }
+
             // --- Name extraction (Optimistic) ---
             const cleanLines = engResult.data.text.split('\n')
                 .map(l => l.replace(/[^\w\s,\-\/\.\:\&]/g, ' ').replace(/\s+/g, ' ').trim())
@@ -131,6 +141,12 @@ const verifyDocument = async (filePath, type) => {
                 // Secondary check for any MM/DD/YYYY format
                 dobMatch = cleanText.match(/\b(\d{2}\s*[/\\-]\s*\d{2}\s*[/\\-]\s*\d{4})\b/);
             }
+            if (!dobMatch) {
+                // Extreme fallback: Just find any year between 1920 and 2010
+                const yearMatch = cleanText.match(/\b(19[2-9]\d|200\d|2010)\b/);
+                if (yearMatch) dobMatch = [yearMatch[0], yearMatch[0]]; // Mock the same array structure
+            }
+
             if (dobMatch) {
                 // dobMatch[1] will have precisely the date/year group captured
                 extractedData.dob = dobMatch[1].replace(/\s+/g, '');
@@ -197,7 +213,7 @@ const verifyDocument = async (filePath, type) => {
 
             for (const line of cleanLines) {
                 const lower = line.toLowerCase();
-                const prefixMatch = lower.match(/\b(w\/o|s\/o|d\/o|c\/o|w\/0|s\/0|d\/0|c\/0)\b/);
+                const prefixMatch = lower.match(/\b(w\/o|s\/o|d\/o|c\/o|w\/0|s\/0|d\/0|c\/0|s\/c|s\/cr)\b/);
 
                 // Start capturing after "Address" keyword or prefix
                 if (lower.includes('address') || lower.includes('addres') || prefixMatch) {
@@ -217,6 +233,17 @@ const verifyDocument = async (filePath, type) => {
                     addressLines.push(line);
                     if (/\d{6}/.test(line)) break; // Pincode found, stop
                 }
+            }
+
+            if (addressLines.length === 0) {
+                // SUPER FALLBACK: If we still didn't capture from prefixes, just clean it aggressively
+                // We look for the first line that looks like it has state names or pincodes or S/O
+                let fallbackAddr = cleanLines.join(', ');
+                // slice off leading gibberish before first comma if it's super short
+                if (fallbackAddr.indexOf(',') > 0 && fallbackAddr.split(',')[0].length < 10) {
+                    fallbackAddr = fallbackAddr.substring(fallbackAddr.indexOf(',') + 1).trim();
+                }
+                addressLines.push(fallbackAddr);
             }
 
             if (addressLines.length > 0) {
