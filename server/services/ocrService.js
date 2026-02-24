@@ -144,8 +144,8 @@ const verifyDocument = async (filePath, type) => {
                 }
             }
             if (!dobMatch) {
-                // Nuclear fallback: Just find the FIRST year between 1920 and 2029 that appears anywhere in the clean text
-                const yearMatch = cleanText.match(/\b(19[2-9]\d|20[0-2]\d)\b/);
+                // Nuclear fallback: Just find the FIRST year between 1920 and 2029 that appears anywhere in the clean text (NO WORD BOUNDARIES)
+                const yearMatch = cleanText.match(/(19[2-9]\d|20[0-2]\d)/);
                 if (yearMatch) dobMatch = [yearMatch[0], yearMatch[0]];
             }
 
@@ -261,6 +261,13 @@ const verifyDocument = async (filePath, type) => {
 
             if (addressLines.length > 0) {
                 let finalAddress = addressLines.join(', ').replace(/, \s*,/g, ',').replace(/\s+/g, ' ').trim();
+
+                // Slice off leading gibberish by finding the true start of the address (S/O, W/O, C/O etc)
+                const startMatch = finalAddress.match(/(?:so s\/or|s\/or|s\/o|w\/o|c\/o|d\/o|s\/0|w\/0|c\/0|s\/c es|s\/c)/i);
+                if (startMatch) {
+                    let suffix = finalAddress.substring(startMatch.index);
+                    finalAddress = suffix.replace(/^(?:so s\/or|s\/or|s\/o|w\/o|c\/o|d\/o|s\/0|w\/0|c\/0|s\/c es|s\/c)\s*/i, 'S/O ');
+                }
 
                 // Clean up known severe OCR garbles for standard regional addresses
                 finalAddress = finalAddress.replace(/ardhra radesh|andhra|ardhra/ig, 'Andhra Pradesh');
