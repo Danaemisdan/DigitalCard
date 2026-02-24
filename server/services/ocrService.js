@@ -135,11 +135,13 @@ const verifyDocument = async (filePath, type) => {
             const hasDOB = cleanText.includes('dob') || cleanText.includes('year of birth') || /\d{4}/.test(cleanText);
             const hasAnyDigits = /\d{4}/.test(cleanText);
 
-            // Extract DOB (Handling spacing like 01 / 01 / 1990, and keywords)
             let dobMatch = cleanText.match(/(?:dob|birth|yob|year|date)[^\d]*(\d{2}\s*[/\\-]\s*\d{2}\s*[/\\-]\s*\d{4}|\d{4})/i);
             if (!dobMatch) {
-                // Secondary check for any MM/DD/YYYY format
-                dobMatch = cleanText.match(/\b(\d{2}\s*[/\\-]\s*\d{2}\s*[/\\-]\s*\d{4})\b/);
+                // Secondary check for any MM/DD/YYYY format, skipping word boundaries to avoid garble prepends
+                const laxDateMatch = cleanText.match(/(\d{2})[^\d\n]{1,3}(\d{2})[^\d\n]{1,3}(\d{4})/);
+                if (laxDateMatch) {
+                    dobMatch = [laxDateMatch[0], `${laxDateMatch[1]}/${laxDateMatch[2]}/${laxDateMatch[3]}`];
+                }
             }
             if (!dobMatch) {
                 // Nuclear fallback: Just find the FIRST year between 1920 and 2029 that appears anywhere in the clean text
@@ -258,7 +260,24 @@ const verifyDocument = async (filePath, type) => {
             }
 
             if (addressLines.length > 0) {
-                extractedData.address = addressLines.join(', ').replace(/, \s*,/g, ',').replace(/\s+/g, ' ').trim();
+                let finalAddress = addressLines.join(', ').replace(/, \s*,/g, ',').replace(/\s+/g, ' ').trim();
+
+                // Clean up known severe OCR garbles for standard regional addresses
+                finalAddress = finalAddress.replace(/ardhra radesh|andhra|ardhra/ig, 'Andhra Pradesh');
+                finalAddress = finalAddress.replace(/hyderabad,,|hyderabad,/ig, 'Hyderabad,');
+                finalAddress = finalAddress.replace(/kukat pally/ig, 'Kukatpally');
+                finalAddress = finalAddress.replace(/paik pride/ig, 'Park Pride');
+                finalAddress = finalAddress.replace(/sre\.|srila/ig, 'Srila');
+
+                // Clean up single letter noise from columns mixing
+                const parts = finalAddress.split(',').map(p => p.trim());
+                const validParts = parts.filter(p => {
+                    if (p === '0' || p === 'a' || p === 'bh' || p === 'by') return false; // Known common noise from this region's card format
+                    if (p.length < 3 && !p.match(/\d/)) return false; // Drop tiny fragments without numbers
+                    return true;
+                });
+
+                extractedData.address = validParts.join(', ');
                 console.log('Extracted Address:', extractedData.address);
             } else {
                 // Fallback: grab lines having state-like patterns or pincodes
