@@ -126,8 +126,11 @@ const PremierForm = () => {
                 data.append('mobile', formData.mobile);
                 data.append('city', formData.city);
                 data.append('state', formData.state);
-                data.append('gender', formData.gender);
-                data.append('dob', formData.dob);
+                if (formData.gender) data.append('gender', formData.gender);
+                if (formData.dob) data.append('dob', formData.dob);
+                // Assuming 'address' might be added to formData later, or is a placeholder for future expansion
+                // For now, it's not in formData, so this check will prevent appending an undefined value.
+                if (formData.address) data.append('address', formData.address);
                 data.append('aadhaarNumber', formData.aadhaarNumber || 'PENDING');
                 data.append('applicationType', 'Premier');
                 // In a real app, this would be handled via webhook, but for MVP we assume paid on submission

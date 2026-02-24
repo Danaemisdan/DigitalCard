@@ -101,10 +101,13 @@ const createApplication = async (req, res) => {
             });
         }
 
-        // Auto-fill from OCR if valid
-        const finalGender = gender || extractedAadhaar.gender || 'Other';
+        // Auto-fill from OCR if valid (Protect against React FormData stringifying undefined)
+        const safeGender = (gender && gender !== 'undefined') ? gender : null;
+        const safeDob = (dob && dob !== 'undefined') ? dob : null;
+
+        const finalGender = safeGender || extractedAadhaar.gender || 'Other';
         const finalAadhaarNumber = aadhaarNumber || extractedAadhaar.aadhaarNumber || 'PENDING';
-        const finalDOB = dob || extractedAadhaar.dob || '';
+        const finalDOB = safeDob || extractedAadhaar.dob || '';
 
         // Generate Unique Code
         const mobileLast4 = mobile ? mobile.slice(-4) : '0000';

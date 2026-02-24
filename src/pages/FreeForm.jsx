@@ -118,8 +118,9 @@ const FreeForm = () => {
             data.append('city', formData.city);
             data.append('state', formData.state);
             data.append('referralCode', formData.referralCode);
-            data.append('gender', formData.gender);
-            data.append('dob', formData.dob);
+            if (formData.gender) data.append('gender', formData.gender);
+            if (formData.dob) data.append('dob', formData.dob);
+            if (formData.address) data.append('address', formData.address);
             data.append('aadhaarNumber', formData.aadhaarNumber || 'PENDING'); // Allow manual override
             data.append('applicationType', 'Free');
 
