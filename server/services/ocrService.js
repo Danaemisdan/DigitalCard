@@ -135,24 +135,34 @@ const verifyDocument = async (filePath, type) => {
             const hasDOB = normalizedText.includes('dob') || normalizedText.includes('year of birth') || /\d{4}/.test(normalizedText);
             const hasAnyDigits = /\d{4}/.test(normalizedText);
 
-            let dobMatch = normalizedText.match(/(?:dob|birth|yob|year|date)[^\d]*(\d{2}\s*[/\\-]\s*\d{2}\s*[/\\-]\s*\d{4}|\d{4})/i);
-            if (!dobMatch) {
-                // Secondary check for any MM/DD/YYYY format, skipping word boundaries to avoid garble prepends
-                // Allowing up to 5 spacing characters to account for extensive Tesseract segmentation noise
-                const laxDateMatch = normalizedText.match(/(\d{2})[^\d\n]{1,5}(\d{2})[^\d\n]{1,5}(\d{4})/);
-                if (laxDateMatch) {
-                    dobMatch = [laxDateMatch[0], `${laxDateMatch[1]}/${laxDateMatch[2]}/${laxDateMatch[3]}`];
+            // --- Super Robust DOB Extraction ---
+            // Tesseract frequently adds spaces between digits (e.g. "2 0 0 2") and reads "DOB" as "00b".
+            // We strip ALL non-alphanumeric characters first, then apply number normalization
+            const compressedText = cleanText.replace(/[^a-z0-9]/g, '');
+            const normalizedCompressed = compressedText
+                .replace(/[o]/g, '0')
+                .replace(/[l|i]/g, '1')
+                .replace(/[s]/g, '5')
+                .replace(/[b]/g, '8')
+                .replace(/[z]/g, '2');
+
+            // Look for any continuous 8-digit sequence that looks like DDMMYYYY where YYYY is 19XX or 20XX
+            const tightDateMatch = normalizedCompressed.match(/(\d{2})(\d{2})(19[2-9]\d|20[0-2]\d)/);
+            let dobMatch = null;
+
+            if (tightDateMatch) {
+                dobMatch = [tightDateMatch[0], `${tightDateMatch[1]}/${tightDateMatch[2]}/${tightDateMatch[3]}`];
+            } else {
+                // Nuclear fallback: Just find the FIRST 4-digit sequence that looks like a valid year
+                const yearMatch = normalizedCompressed.match(/(19[2-9]\d|20[0-2]\d)/);
+                if (yearMatch) {
+                    dobMatch = [yearMatch[0], yearMatch[0]];
                 }
-            }
-            if (!dobMatch) {
-                // Nuclear fallback: Just find the FIRST year between 1920 and 2029 that appears anywhere in the NORMALIZED text
-                const yearMatch = normalizedText.match(/(19[2-9]\d|20[0-2]\d)/);
-                if (yearMatch) dobMatch = [yearMatch[0], yearMatch[0]];
             }
 
             if (dobMatch) {
-                // dobMatch[1] will have precisely the date/year group captured
-                extractedData.dob = dobMatch[1].replace(/\s+/g, '');
+                // dobMatch[1] contains the formatted date or just the year
+                extractedData.dob = dobMatch[1];
                 console.log('Extracted DOB:', extractedData.dob);
             }
 
