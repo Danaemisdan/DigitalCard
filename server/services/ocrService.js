@@ -98,9 +98,9 @@ const verifyDocument = async (filePath, type) => {
             }
 
             // --- Gender Extraction ---
-            if (cleanText.match(/female|mahila|స్త్రీ|பெண்|महिला/)) {
+            if (cleanText.match(/female|mahila|స్త్రీ|பெண்|महिला|fe-male|fema|em\s*ale/)) {
                 extractedData.gender = 'Female';
-            } else if (cleanText.match(/male|purush|పురుషుడు|ஆண்|पुरुष/)) {
+            } else if (cleanText.match(/male|purush|పురుషుడు|ஆண்|पुरुष|m\s*a\s*l\s*e/)) {
                 extractedData.gender = 'Male';
             }
 
@@ -125,10 +125,15 @@ const verifyDocument = async (filePath, type) => {
             const hasDOB = cleanText.includes('dob') || cleanText.includes('year of birth') || /\d{4}/.test(cleanText);
             const hasAnyDigits = /\d{4}/.test(cleanText);
 
-            // Extract DOB (Handling spacing like 01 / 01 / 1990)
-            const dobMatch = cleanText.match(/\b(\d{2}\s*[/\\-]\s*\d{2}\s*[/\\-]\s*\d{4}|\d{4})\b/);
+            // Extract DOB (Handling spacing like 01 / 01 / 1990, and keywords)
+            let dobMatch = cleanText.match(/(?:dob|birth|yob|year|date)[^\d]*(\d{2}\s*[/\\-]\s*\d{2}\s*[/\\-]\s*\d{4}|\d{4})/i);
+            if (!dobMatch) {
+                // Secondary check for any MM/DD/YYYY format
+                dobMatch = cleanText.match(/\b(\d{2}\s*[/\\-]\s*\d{2}\s*[/\\-]\s*\d{4})\b/);
+            }
             if (dobMatch) {
-                extractedData.dob = dobMatch[0].replace(/\s+/g, '');
+                // dobMatch[1] will have precisely the date/year group captured
+                extractedData.dob = dobMatch[1].replace(/\s+/g, '');
                 console.log('Extracted DOB:', extractedData.dob);
             }
 
@@ -192,11 +197,19 @@ const verifyDocument = async (filePath, type) => {
 
             for (const line of cleanLines) {
                 const lower = line.toLowerCase();
-                // Start capturing after "Address" keyword
-                if (lower.includes('address') || lower.includes('addres') || lower.match(/\b(w\/o|s\/o|d\/o|c\/o)\b/)) {
+                const prefixMatch = lower.match(/\b(w\/o|s\/o|d\/o|c\/o|w\/0|s\/0|d\/0|c\/0)\b/);
+
+                // Start capturing after "Address" keyword or prefix
+                if (lower.includes('address') || lower.includes('addres') || prefixMatch) {
                     capturing = true;
-                    // Remove the "Address:" prefix if present
-                    const cleaned = line.replace(/^.*address\s*:?\s*/i, '').trim();
+                    let cleaned = line.replace(/^.*address\s*:?\s*/i, '').trim();
+
+                    // Strip gibberish before the c/o, s/o etc
+                    if (prefixMatch) {
+                        const idx = lower.indexOf(prefixMatch[0]);
+                        cleaned = line.substring(idx).trim();
+                    }
+
                     if (cleaned.length > 2) addressLines.push(cleaned);
                     continue;
                 }

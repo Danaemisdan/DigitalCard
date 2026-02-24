@@ -15,7 +15,6 @@ const PremierForm = () => {
         city: '',
         state: '',
         dob: '',
-        address: '',
     });
     const [files, setFiles] = useState({
         aadhaar: null,
@@ -79,8 +78,7 @@ const PremierForm = () => {
                             ...prev,
                             aadhaarNumber: result.extractedData.aadhaarNumber || prev.aadhaarNumber,
                             gender: result.extractedData.gender || prev.gender,
-                            dob: result.extractedData.dob || prev.dob,
-                            address: result.extractedData.address || prev.address
+                            dob: result.extractedData.dob || prev.dob
                         }));
                     }
                 } catch (err) {
@@ -130,7 +128,6 @@ const PremierForm = () => {
                 data.append('state', formData.state);
                 data.append('gender', formData.gender);
                 data.append('dob', formData.dob);
-                data.append('address', formData.address);
                 data.append('aadhaarNumber', formData.aadhaarNumber || 'PENDING');
                 data.append('applicationType', 'Premier');
                 // In a real app, this would be handled via webhook, but for MVP we assume paid on submission

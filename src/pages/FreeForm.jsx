@@ -15,7 +15,6 @@ const FreeForm = () => {
         state: '',
         referralCode: '',
         dob: '',
-        address: '',
     });
     const [files, setFiles] = useState({
         aadhaar: null,
@@ -84,7 +83,6 @@ const FreeForm = () => {
                             aadhaarNumber: prev.aadhaarNumber || result.extractedData.aadhaarNumber || '',
                             gender: prev.gender || result.extractedData.gender || '',
                             dob: prev.dob || result.extractedData.dob || '',
-                            address: prev.address || result.extractedData.address || '',
                         }));
                     }
                 } catch (err) {
@@ -122,7 +120,6 @@ const FreeForm = () => {
             data.append('referralCode', formData.referralCode);
             data.append('gender', formData.gender);
             data.append('dob', formData.dob);
-            data.append('address', formData.address);
             data.append('aadhaarNumber', formData.aadhaarNumber || 'PENDING'); // Allow manual override
             data.append('applicationType', 'Free');
 
@@ -299,45 +296,6 @@ const FreeForm = () => {
                                 placeholder="Enter Aadhaar Number if manually known"
                                 className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
                             />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-brand-teal mb-2">DOB (Optional Fallback)</label>
-                            <input
-                                type="text"
-                                name="dob"
-                                value={formData.dob || ''}
-                                onChange={handleChange}
-                                placeholder="DD/MM/YYYY"
-                                className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-brand-teal mb-2">Gender (Optional Fallback)</label>
-                            <select
-                                name="gender"
-                                value={formData.gender || ''}
-                                onChange={handleChange}
-                                className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all"
-                            >
-                                <option value="">Select Gender (or let AI extract)</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-
-                        <div className="md:col-span-2">
-                            <label className="block text-sm font-bold text-brand-teal mb-2">Address (Optional Fallback)</label>
-                            <textarea
-                                name="address"
-                                value={formData.address || ''}
-                                onChange={handleChange}
-                                placeholder="Enter your full address here if OCR misses it"
-                                rows="3"
-                                className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
-                            ></textarea>
                         </div>
                     </div>
 
