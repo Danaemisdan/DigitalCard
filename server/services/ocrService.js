@@ -142,9 +142,9 @@ const verifyDocument = async (filePath, type) => {
                 dobMatch = cleanText.match(/\b(\d{2}\s*[/\\-]\s*\d{2}\s*[/\\-]\s*\d{4})\b/);
             }
             if (!dobMatch) {
-                // Extreme fallback: Just find any year between 1920 and 2010
-                const yearMatch = cleanText.match(/\b(19[2-9]\d|200\d|2010)\b/);
-                if (yearMatch) dobMatch = [yearMatch[0], yearMatch[0]]; // Mock the same array structure
+                // Nuclear fallback: Just find the FIRST year between 1920 and 2029 that appears anywhere in the clean text
+                const yearMatch = cleanText.match(/\b(19[2-9]\d|20[0-2]\d)\b/);
+                if (yearMatch) dobMatch = [yearMatch[0], yearMatch[0]];
             }
 
             if (dobMatch) {
@@ -236,14 +236,25 @@ const verifyDocument = async (filePath, type) => {
             }
 
             if (addressLines.length === 0) {
-                // SUPER FALLBACK: If we still didn't capture from prefixes, just clean it aggressively
-                // We look for the first line that looks like it has state names or pincodes or S/O
-                let fallbackAddr = cleanLines.join(', ');
-                // slice off leading gibberish before first comma if it's super short
-                if (fallbackAddr.indexOf(',') > 0 && fallbackAddr.split(',')[0].length < 10) {
-                    fallbackAddr = fallbackAddr.substring(fallbackAddr.indexOf(',') + 1).trim();
+                // NUCLEAR FALLBACK: If NO prefixes matched (w/o, s/o, address, s/c etc failed),
+                // the OCR is completely trashed. We assume the ENTIRE back of the card IS the address.
+                // We just take all lines, join them, and try to slice off the first few meaningless words.
+                let rawAddressBlock = cleanLines.join(', ');
+
+                // If it's a huge block, try to find the pincode and stop there.
+                const pinMatch = rawAddressBlock.match(/\d{6}/);
+                if (pinMatch) {
+                    const pinIndex = rawAddressBlock.indexOf(pinMatch[0]);
+                    rawAddressBlock = rawAddressBlock.substring(0, pinIndex + 6);
                 }
-                addressLines.push(fallbackAddr);
+
+                // Clean up leading extreme gibberish (e.g., 'an. 5: ') by taking everything after the first comma
+                if (rawAddressBlock.indexOf(',') > 0 && rawAddressBlock.split(',')[0].length < 15) {
+                    rawAddressBlock = rawAddressBlock.substring(rawAddressBlock.indexOf(',') + 1).trim();
+                }
+
+                addressLines.push(rawAddressBlock);
+                console.log('Using Nuclear Address Fallback');
             }
 
             if (addressLines.length > 0) {
