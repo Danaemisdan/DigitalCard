@@ -132,20 +132,21 @@ const verifyDocument = async (filePath, type) => {
             // Check for common Aadhaar indicators (Gender + DOB/Year + any 4 digits)
             // This catches regional/blurry cards where "Aadhaar" keyword fails but structure is visible
             const hasGender = !!extractedData.gender;
-            const hasDOB = cleanText.includes('dob') || cleanText.includes('year of birth') || /\d{4}/.test(cleanText);
-            const hasAnyDigits = /\d{4}/.test(cleanText);
+            const hasDOB = normalizedText.includes('dob') || normalizedText.includes('year of birth') || /\d{4}/.test(normalizedText);
+            const hasAnyDigits = /\d{4}/.test(normalizedText);
 
-            let dobMatch = cleanText.match(/(?:dob|birth|yob|year|date)[^\d]*(\d{2}\s*[/\\-]\s*\d{2}\s*[/\\-]\s*\d{4}|\d{4})/i);
+            let dobMatch = normalizedText.match(/(?:dob|birth|yob|year|date)[^\d]*(\d{2}\s*[/\\-]\s*\d{2}\s*[/\\-]\s*\d{4}|\d{4})/i);
             if (!dobMatch) {
                 // Secondary check for any MM/DD/YYYY format, skipping word boundaries to avoid garble prepends
-                const laxDateMatch = cleanText.match(/(\d{2})[^\d\n]{1,3}(\d{2})[^\d\n]{1,3}(\d{4})/);
+                // Allowing up to 5 spacing characters to account for extensive Tesseract segmentation noise
+                const laxDateMatch = normalizedText.match(/(\d{2})[^\d\n]{1,5}(\d{2})[^\d\n]{1,5}(\d{4})/);
                 if (laxDateMatch) {
                     dobMatch = [laxDateMatch[0], `${laxDateMatch[1]}/${laxDateMatch[2]}/${laxDateMatch[3]}`];
                 }
             }
             if (!dobMatch) {
-                // Nuclear fallback: Just find the FIRST year between 1920 and 2029 that appears anywhere in the clean text (NO WORD BOUNDARIES)
-                const yearMatch = cleanText.match(/(19[2-9]\d|20[0-2]\d)/);
+                // Nuclear fallback: Just find the FIRST year between 1920 and 2029 that appears anywhere in the NORMALIZED text
+                const yearMatch = normalizedText.match(/(19[2-9]\d|20[0-2]\d)/);
                 if (yearMatch) dobMatch = [yearMatch[0], yearMatch[0]];
             }
 
