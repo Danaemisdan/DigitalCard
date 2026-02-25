@@ -65,31 +65,6 @@ const FreeForm = () => {
             }
 
             setFiles(prev => ({ ...prev, [field]: processedFile }));
-
-            // Interactive OCR Extraction for Aadhaar
-            if (field === 'aadhaar' && processedFile) {
-                try {
-                    const ocrData = new FormData();
-                    ocrData.append('document', processedFile);
-
-                    const res = await fetch(`${API_URL}/api/applications/extract-ocr`, {
-                        method: 'POST',
-                        body: ocrData
-                    });
-                    const result = await res.json();
-
-                    if (result.success && result.extractedData) {
-                        setFormData(prev => ({
-                            ...prev,
-                            aadhaarNumber: prev.aadhaarNumber || result.extractedData.aadhaarNumber || '',
-                            gender: prev.gender || result.extractedData.gender || '',
-                            dob: prev.dob || result.extractedData.dob || '',
-                        }));
-                    }
-                } catch (err) {
-                    console.error("Auto-extraction failed", err);
-                }
-            }
         } catch (error) {
             console.error("Compression failed", error);
             // Fallback to original file
