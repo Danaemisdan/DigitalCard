@@ -328,4 +328,46 @@ const deleteApplication = async (req, res) => {
     }
 };
 
-module.exports = { createApplication, getApplicationById, downloadCard, getAllApplications, extractOcrData, deleteApplication };
+// @desc    Update and finalize application after User OCR review
+// @route   PUT /api/applications/:id/finalize
+// @access  Public
+const finalizeApplication = async (req, res) => {
+    try {
+        const { dob, gender, address, aadhaarNumber } = req.body;
+        const application = await Application.findById(req.params.id);
+
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        // Update parsed fields from the frontend review
+        if (dob !== undefined) application.personalDetails.dob = dob;
+        if (gender !== undefined) application.personalDetails.gender = gender;
+        if (address !== undefined) application.personalDetails.address = address;
+        if (aadhaarNumber !== undefined) application.personalDetails.aadhaarNumber = aadhaarNumber;
+
+        // Ensure final status is Verified for Free cards once user confirms
+        if (application.applicationType === 'Free') {
+            application.status = 'Verified';
+        }
+
+        // Regenerate the PDF with the pristine user-reviewed data
+        console.log('Regenerating PDF for finalized application:', application._id);
+        const pdfBuffer = await generateCardPDF(application);
+        application.pdfData = pdfBuffer;
+
+        await application.save();
+
+        res.json({
+            success: true,
+            message: 'Application finalized and card generated',
+            data: application
+        });
+    } catch (error) {
+        console.error('Finalize Application Error:', error);
+        res.status(500).json({ message: 'Server Error during finalization', error: error.message });
+    }
+};
+
+
+module.exports = { createApplication, getApplicationById, downloadCard, getAllApplications, extractOcrData, deleteApplication, finalizeApplication };

@@ -9,12 +9,13 @@ const FreeForm = () => {
         fullName: '',
         email: '',
         mobile: '',
-        gender: 'Male',
+        gender: '',
         aadhaarNumber: '',
         city: '',
         state: '',
         referralCode: '',
         dob: '',
+        address: '',
     });
     const [files, setFiles] = useState({
         aadhaar: null,
@@ -22,11 +23,11 @@ const FreeForm = () => {
         pan: null,
         photo: null
     });
+    const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState('idle'); // idle, success, error
     const [errorMessage, setErrorMessage] = useState('');
     const [applicationId, setApplicationId] = useState(null);
-    const [showManualEntry, setShowManualEntry] = useState(false);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -137,8 +138,19 @@ const FreeForm = () => {
             const result = await response.json();
 
             if (response.ok) {
-                setStatus('success');
-                setApplicationId(result.data._id);
+                setApplicationId(result.applicationId || result.data._id);
+                // Pre-fill form with extracted OCR data for the review step
+                if (result.data && result.data.personalDetails) {
+                    setFormData(prev => ({
+                        ...prev,
+                        dob: result.data.personalDetails.dob || '',
+                        gender: result.data.personalDetails.gender || '',
+                        address: result.data.personalDetails.address || '',
+                        aadhaarNumber: result.data.personalDetails.aadhaarNumber || prev.aadhaarNumber
+                    }));
+                }
+                setStep(2);
+                setStatus('idle');
             } else {
                 setStatus('error');
                 setErrorMessage(result.error || result.message || 'Submission failed');
@@ -147,6 +159,41 @@ const FreeForm = () => {
             console.error(error);
             setStatus('error');
             setErrorMessage('Network error. Please ensure backend is running.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleFinalize = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setStatus('idle');
+        setErrorMessage('');
+
+        try {
+            const response = await fetch(`${API_URL}/api/applications/${applicationId}/finalize`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    dob: formData.dob,
+                    gender: formData.gender,
+                    address: formData.address,
+                    aadhaarNumber: formData.aadhaarNumber
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                setStatus('success');
+            } else {
+                setStatus('error');
+                setErrorMessage(result.error || result.message || 'Finalization failed');
+            }
+        } catch (error) {
+            console.error(error);
+            setStatus('error');
+            setErrorMessage('Network error during finalization.');
         } finally {
             setLoading(false);
         }
@@ -229,149 +276,176 @@ const FreeForm = () => {
 
                     </div>
 
-                    {/* Extracted Details Display (Read-Only) */}
-                    {(formData.aadhaarNumber || formData.gender !== 'Male') && (
-                        <div className="bg-teal-50 border border-teal-100 rounded-xl p-4 mb-6">
-                            <h4 className="text-sm font-bold text-teal-800 mb-2 flex items-center">
-                                <Shield className="w-4 h-4 mr-1" /> Verified Details (From Card)
-                            </h4>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <span className="text-teal-600 block text-xs uppercase font-bold">Aadhaar Number</span>
-                                    <span className="font-mono font-medium text-slate-700">{formData.aadhaarNumber || 'Processing...'}</span>
+                    {/* Step 2: OCR Review / Finalize */}
+                    {step === 2 && (
+                        <div className="bg-brand-cream border border-brand-teal/20 rounded-xl p-8 mb-6 animate-fadeIn">
+                            <h3 className="text-xl font-bold text-brand-teal mb-4 flex items-center">
+                                <Shield className="w-6 h-6 mr-2" /> Verify Extracted Details
+                            </h3>
+                            <p className="text-sm text-slate-600 mb-6">
+                                We've scanned your documents. Due to glare or surface dirt, the AI might miss some details.
+                                Please review and correct any incorrect or missing information below before generating your card.
+                            </p>
+
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Aadhaar Number</label>
+                                        <input
+                                            type="text"
+                                            name="aadhaarNumber"
+                                            value={formData.aadhaarNumber || ''}
+                                            onChange={handleChange}
+                                            className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-brand-teal"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Date of Birth</label>
+                                        <input
+                                            type="text"
+                                            name="dob"
+                                            value={formData.dob || ''}
+                                            onChange={handleChange}
+                                            placeholder="DD/MM/YYYY"
+                                            className="glass-input w-full px-4 py-3 rounded-xl border-orange-300 focus:border-brand-teal focus:ring-brand-teal bg-orange-50"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-slate-700 mb-2">Gender</label>
+                                        <select
+                                            name="gender"
+                                            value={formData.gender || ''}
+                                            onChange={handleChange}
+                                            className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-brand-teal"
+                                        >
+                                            <option value="">Select Gender</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <div>
-                                    <span className="text-teal-600 block text-xs uppercase font-bold">Gender</span>
-                                    <span className="font-medium text-slate-700">{formData.gender}</span>
+                                    <label className="block text-sm font-bold text-slate-700 mb-2">Address</label>
+                                    <textarea
+                                        name="address"
+                                        rows="3"
+                                        value={formData.address || ''}
+                                        onChange={handleChange}
+                                        className="glass-input w-full px-4 py-3 rounded-xl border-orange-300 focus:border-brand-teal focus:ring-brand-teal bg-orange-50 resize-none"
+                                    ></textarea>
                                 </div>
+                            </div>
+
+                            <div className="mt-8 flex justify-end">
+                                <button
+                                    onClick={handleFinalize}
+                                    disabled={loading}
+                                    className="bg-brand-teal text-white px-8 py-4 rounded-xl font-bold hover:bg-teal-900 transition-all flex items-center justify-center w-full md:w-auto"
+                                >
+                                    {loading ? (
+                                        <><Loader2 className="animate-spin mr-2 h-5 w-5" /> Generating Final Card...</>
+                                    ) : (
+                                        <>Confirm & Generate Card <ArrowRight className="ml-2 h-5 w-5" /></>
+                                    )}
+                                </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Location Details */}
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">City</label>
-                        <input
-                            type="text"
-                            name="city"
-                            value={formData.city}
-                            onChange={handleChange}
-                            required
-                            className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-brand-teal"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">State</label>
-                        <input
-                            type="text"
-                            name="state"
-                            value={formData.state}
-                            onChange={handleChange}
-                            required
-                            className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-brand-teal"
-                        />
-                    </div>
+                    {/* Step 1: Document Upload */}
+                    {step === 1 && (
+                        <>
+
+                            {/* Location Details */}
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">City</label>
+                                <input
+                                    type="text"
+                                    name="city"
+                                    value={formData.city}
+                                    onChange={handleChange}
+                                    required
+                                    className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-brand-teal"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-brand-teal mb-2">State *</label>
+                                <input
+                                    type="text"
+                                    name="state"
+                                    required
+                                    value={formData.state}
+                                    onChange={handleChange}
+                                    placeholder="E.g., Maharashtra"
+                                    className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
+                                />
+                            </div>
 
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-bold text-brand-teal mb-2">DOB (Optional - OCR Auto-fill)</label>
-                            <input
-                                type="text"
-                                name="dob"
-                                value={formData.dob || ''}
-                                onChange={handleChange}
-                                placeholder="DD/MM/YYYY"
-                                className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-brand-teal mb-2">Gender (Optional - OCR Auto-fill)</label>
-                            <select
-                                name="gender"
-                                value={formData.gender || ''}
-                                onChange={handleChange}
-                                className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all"
-                            >
-                                <option value="">Select Gender</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                    </div>
+                            <div className="bg-brand-cream rounded-xl p-6 border border-brand-teal/10 space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-brand-teal mb-2">Referral Code (Mandatory)</label>
+                                    <input
+                                        type="text"
+                                        name="referralCode"
+                                        value={formData.referralCode}
+                                        onChange={handleChange}
+                                        required
+                                        placeholder="Enter code"
+                                        className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
+                                    />
+                                </div>
 
-                    <div>
-                        <label className="block text-sm font-bold text-brand-teal mb-2">Full Address (Optional - OCR Auto-fill)</label>
-                        <textarea
-                            name="address"
-                            rows="2"
-                            value={formData.address || ''}
-                            onChange={handleChange}
-                            placeholder="Type here to override the Aadhaar back scanner"
-                            className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400 resize-none"
-                        ></textarea>
-                    </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-brand-teal mb-2">Aadhaar Number (Optional)</label>
+                                    <input
+                                        type="text"
+                                        name="aadhaarNumber"
+                                        value={formData.aadhaarNumber || ''}
+                                        onChange={handleChange}
+                                        placeholder="Enter Aadhaar Number if manually known"
+                                        className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
+                                    />
+                                </div>
+                            </div>
 
-                    <div className="bg-brand-cream rounded-xl p-6 border border-brand-teal/10 space-y-4">
-                        <div>
-                            <label className="block text-sm font-bold text-brand-teal mb-2">Referral Code (Mandatory)</label>
-                            <input
-                                type="text"
-                                name="referralCode"
-                                value={formData.referralCode}
-                                onChange={handleChange}
-                                required
-                                placeholder="Enter code"
-                                className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
-                            />
-                        </div>
+                            <div className="border-t border-slate-100 pt-8">
+                                <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
+                                    <Shield className="h-5 w-5 text-brand-teal mr-2" />
+                                    Required Documents
+                                </h3>
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <FileUpload label="Aadhaar Card (Front)" required onFileSelect={(f) => handleFileSelect('aadhaar', f)} />
+                                    <FileUpload label="Aadhaar Card (Back)" required onFileSelect={(f) => handleFileSelect('aadhaarBack', f)} />
+                                    <FileUpload label="PAN Card" required onFileSelect={(f) => handleFileSelect('pan', f)} />
+                                    <FileUpload label="Photo" required accept="image/*,.pdf" onFileSelect={(f) => handleFileSelect('photo', f)} />
+                                </div>
+                            </div>
 
-                        <div>
-                            <label className="block text-sm font-bold text-brand-teal mb-2">Aadhaar Number (Optional)</label>
-                            <input
-                                type="text"
-                                name="aadhaarNumber"
-                                value={formData.aadhaarNumber || ''}
-                                onChange={handleChange}
-                                placeholder="Enter Aadhaar Number if manually known"
-                                className="bg-white border border-brand-teal/20 text-slate-900 w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-1 focus:ring-brand-teal transition-all placeholder-slate-400"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="border-t border-slate-100 pt-8">
-                        <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-                            <Shield className="h-5 w-5 text-brand-teal mr-2" />
-                            Required Documents
-                        </h3>
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <FileUpload label="Aadhaar Card (Front)" required onFileSelect={(f) => handleFileSelect('aadhaar', f)} />
-                            <FileUpload label="Aadhaar Card (Back)" required onFileSelect={(f) => handleFileSelect('aadhaarBack', f)} />
-                            <FileUpload label="PAN Card" required onFileSelect={(f) => handleFileSelect('pan', f)} />
-                            <FileUpload label="Photo" required accept="image/*,.pdf" onFileSelect={(f) => handleFileSelect('photo', f)} />
-                        </div>
-                    </div>
-
-                    {status === 'error' && (
-                        <div className="bg-red-50 text-red-600 p-4 rounded-xl text-center font-medium">
-                            {errorMessage}
-                        </div>
-                    )}
-
-                    <div>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-xl shadow-brand-orange/20 transition-all flex items-center justify-center hover:scale-[1.01] disabled:opacity-70 disabled:cursor-not-allowed"
-                        >
-                            {loading ? (
-                                <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
-                            ) : (
-                                <>Submit Application <ArrowRight className="ml-2 h-5 w-5" /></>
+                            {status === 'error' && (
+                                <div className="bg-red-50 text-red-600 p-4 rounded-xl text-center font-medium">
+                                    {errorMessage}
+                                </div>
                             )}
-                        </button>
-                    </div>
+
+                            <div>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-xl shadow-brand-orange/20 transition-all flex items-center justify-center hover:scale-[1.01] disabled:opacity-70 disabled:cursor-not-allowed"
+                                >
+                                    {loading ? (
+                                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
+                                    ) : (
+                                        <>Submit Application <ArrowRight className="ml-2 h-5 w-5" /></>
+                                    )}
+                                </button>
+                            </div>
+                        </>
+                    )}
                 </form>
             </div>
         </div>
