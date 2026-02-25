@@ -214,6 +214,11 @@ const FreeForm = () => {
 
             <div className="bg-white rounded-[2rem] shadow-xl shadow-brand-teal/5 border border-slate-100 overflow-hidden p-8 md:p-12">
                 <form onSubmit={handleSubmit} className="space-y-8 animate-fadeIn">
+                    {status === 'error' && (
+                        <div className="bg-red-50 text-red-600 p-4 rounded-xl text-center font-medium mb-6 shadow-sm border border-red-100">
+                            {errorMessage}
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="md:col-span-2">
                             <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
@@ -316,6 +321,7 @@ const FreeForm = () => {
 
                             <div className="mt-8 flex justify-end">
                                 <button
+                                    type="button"
                                     onClick={handleFinalize}
                                     disabled={loading}
                                     className="bg-brand-teal text-white px-8 py-4 rounded-xl font-bold hover:bg-teal-900 transition-all flex items-center justify-center w-full md:w-auto"
@@ -399,12 +405,6 @@ const FreeForm = () => {
                                     <FileUpload label="Photo" required accept="image/*,.pdf" onFileSelect={(f) => handleFileSelect('photo', f)} />
                                 </div>
                             </div>
-
-                            {status === 'error' && (
-                                <div className="bg-red-50 text-red-600 p-4 rounded-xl text-center font-medium">
-                                    {errorMessage}
-                                </div>
-                            )}
 
                             <div>
                                 <button
