@@ -172,7 +172,7 @@ const createApplication = async (req, res) => {
             try {
                 console.log('Pre-generating PDF for application:', application._id);
                 const pdfBuffer = await generateCardPDF(application);
-                application.pdfData = pdfBuffer;
+                application.pdfData = Buffer.from(pdfBuffer);
                 await application.save();
                 console.log('PDF Pre-generated and saved.');
             } catch (pdfErr) {
@@ -354,7 +354,8 @@ const finalizeApplication = async (req, res) => {
         // Regenerate the PDF with the pristine user-reviewed data
         console.log('Regenerating PDF for finalized application:', application._id);
         const pdfBuffer = await generateCardPDF(application);
-        application.pdfData = pdfBuffer;
+        // Explicitly cast to Node Buffer to prevent Mongoose CastError from Puppeteer's Uint8Array
+        application.pdfData = Buffer.from(pdfBuffer);
 
         await application.save();
 
