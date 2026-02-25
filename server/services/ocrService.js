@@ -198,6 +198,22 @@ const verifyDocument = async (filePath, type) => {
                 extractedData.panNumber = panMatch[0].toUpperCase();
             }
 
+            // --- PAN DOB Extraction ---
+            const panCompressed = cleanText.replace(/[^a-z0-9]/g, '')
+                .replace(/[o]/g, '0').replace(/[l|i]/g, '1')
+                .replace(/[s]/g, '5').replace(/[b]/g, '8').replace(/[z]/g, '2');
+            const tightPanDate = panCompressed.match(/(\d{2})(\d{2})(19[2-9]\d|20[0-2]\d)/);
+            if (tightPanDate) {
+                extractedData.dob = `${tightPanDate[1]}/${tightPanDate[2]}/${tightPanDate[3]}`;
+                console.log('Extracted DOB from PAN:', extractedData.dob);
+            } else {
+                const loosePanYear = panCompressed.match(/(19[2-9]\d|20[0-2]\d)/);
+                if (loosePanYear) {
+                    extractedData.dob = loosePanYear[0];
+                    console.log('Extracted DOB (Year only) from PAN:', extractedData.dob);
+                }
+            }
+
             // Relaxed PAN check: "Income Tax" OR "Permanent Account Number" OR specific 10-char regex
             if (
                 cleanText.includes('income tax') ||

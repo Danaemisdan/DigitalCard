@@ -56,6 +56,7 @@ const createApplication = async (req, res) => {
         let aadhaarVerified = false;
         let panVerified = false;
         let extractedAadhaar = {};
+        let extractedPan = {};
 
         if (documentPaths.aadhaarPath) {
             const result = await verifyDocument(documentPaths.aadhaarPath, 'aadhaar');
@@ -65,6 +66,7 @@ const createApplication = async (req, res) => {
         if (documentPaths.panPath) {
             const result = await verifyDocument(documentPaths.panPath, 'pan');
             panVerified = result.isVerified;
+            extractedPan = result.extractedData || {};
         }
 
         // --- OCR Address from Aadhaar Back ---
@@ -102,12 +104,12 @@ const createApplication = async (req, res) => {
         }
 
         // Auto-fill from OCR if valid (Protect against React FormData stringifying undefined)
-        const safeGender = (gender && gender !== 'undefined') ? gender : null;
-        const safeDob = (dob && dob !== 'undefined') ? dob : null;
+        const safeGender = (gender && gender.trim() !== '' && gender !== 'undefined') ? gender.trim() : null;
+        const safeDob = (dob && dob.trim() !== '' && dob !== 'undefined') ? dob.trim() : null;
 
         const finalGender = safeGender || extractedAadhaar.gender || 'Other';
         const finalAadhaarNumber = aadhaarNumber || extractedAadhaar.aadhaarNumber || 'PENDING';
-        const finalDOB = safeDob || extractedAadhaar.dob || '';
+        const finalDOB = safeDob || extractedAadhaar.dob || extractedPan.dob || '';
 
         // Generate Unique Code
         const mobileLast4 = mobile ? mobile.slice(-4) : '0000';
