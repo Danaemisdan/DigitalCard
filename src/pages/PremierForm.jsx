@@ -234,6 +234,13 @@ const PremierForm = () => {
                 </div>
 
                 <div className="p-8 md:p-12">
+                    {errorMessage && (
+                        <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 flex items-center shadow-sm border border-red-100">
+                            <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
+                            {errorMessage}
+                        </div>
+                    )}
+
                     {step === 3 && (
                         <div className="max-w-md mx-auto text-center animate-fadeIn">
                             {status === 'processing_payment' ? (
@@ -267,12 +274,7 @@ const PremierForm = () => {
                                         </div>
                                     </div>
 
-                                    {status === 'error' && (
-                                        <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 flex items-center text-left">
-                                            <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-                                            {errorMessage}
-                                        </div>
-                                    )}
+
 
                                     <button
                                         onClick={handlePayment}
@@ -348,6 +350,7 @@ const PremierForm = () => {
 
                             <div className="mt-8 flex justify-end space-x-4">
                                 <button
+                                    type="button"
                                     onClick={handleFinalize}
                                     disabled={loading}
                                     className="bg-brand-orange text-white px-8 py-4 rounded-xl font-bold hover:bg-orange-600 transition-all flex items-center justify-center w-full md:w-auto"
@@ -427,13 +430,6 @@ const PremierForm = () => {
                                     <FileUpload label="Photo" required accept="image/*,.pdf" onFileSelect={(f) => handleFileSelect('photo', f)} />
                                 </div>
                             </div>
-
-                            {errorMessage && (
-                                <div className="bg-red-50 text-red-600 p-4 rounded-xl mt-6 flex items-center">
-                                    <AlertCircle className="h-5 w-5 mr-2" />
-                                    {errorMessage}
-                                </div>
-                            )}
 
                             <div className="mt-8">
                                 <button
