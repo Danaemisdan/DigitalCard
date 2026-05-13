@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Upload, X, FileText } from 'lucide-react';
 
-const FileUpload = ({ label, accept = "image/*,.pdf", required = false, onFileSelect }) => {
+const FileUpload = ({ label, accept = "image/*,.pdf", required = false, onFileSelect, hint }) => {
     const [file, setFile] = useState(null);
     const inputRef = useRef(null);
 
@@ -63,6 +63,7 @@ const FileUpload = ({ label, accept = "image/*,.pdf", required = false, onFileSe
                 accept={accept}
                 onChange={handleFileChange}
             />
+            {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
         </div>
     );
 };

@@ -1,8 +1,30 @@
 import React, { useState } from 'react';
-import { ArrowRight, CreditCard, Shield, CheckCircle, Loader2, AlertCircle, Download } from 'lucide-react';
+import { ArrowRight, CreditCard, Shield, CheckCircle, Loader2, AlertCircle, Download, User, MapPin, Building2, Camera } from 'lucide-react';
 import API_URL from '../config';
 import FileUpload from '../components/FileUpload';
 import imageCompression from 'browser-image-compression';
+
+const SectionHeader = ({ icon: Icon, title, subtitle }) => (
+    <div className="flex items-center gap-3 mb-6 pb-3 border-b border-slate-100">
+        <div className="w-9 h-9 rounded-xl bg-brand-orange/10 flex items-center justify-center flex-shrink-0">
+            <Icon className="h-5 w-5 text-brand-orange" />
+        </div>
+        <div>
+            <h3 className="text-base font-bold text-slate-900">{title}</h3>
+            {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+        </div>
+    </div>
+);
+
+const FormField = ({ label, required, children, hint }) => (
+    <div>
+        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+            {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        {children}
+        {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+    </div>
+);
 
 const PremierForm = () => {
     const [step, setStep] = useState(1);
@@ -11,21 +33,27 @@ const PremierForm = () => {
         email: '',
         mobile: '',
         gender: '',
-        aadhaarNumber: '',
-        city: '',
-        state: '',
-        referralCode: '',
         dob: '',
         address: '',
+        city: '',
+        pinCode: '',
+        state: '',
+        aadhaarNumber: '',
+        panNumber: '',
+        employeeName: '',
+        bankName: '',
+        ifscCode: '',
+        accountNumber: '',
+        referralCode: '',
     });
     const [files, setFiles] = useState({
         aadhaar: null,
         aadhaarBack: null,
         pan: null,
-        photo: null
+        photo: null,
     });
     const [loading, setLoading] = useState(false);
-    const [status, setStatus] = useState('idle'); // idle, processing_payment, submitting, success, error
+    const [status, setStatus] = useState('idle');
     const [errorMessage, setErrorMessage] = useState('');
     const [applicationId, setApplicationId] = useState(null);
 
@@ -34,145 +62,98 @@ const PremierForm = () => {
     };
 
     const handleFileSelect = async (field, file) => {
-        if (!file) {
-            setFiles(prev => ({ ...prev, [field]: null }));
-            return;
-        }
-
+        if (!file) { setFiles(prev => ({ ...prev, [field]: null })); return; }
         try {
-            const options = {
-                maxSizeMB: 0.8, // Compress to ~800KB
-                maxWidthOrHeight: 1920,
-                useWebWorker: true,
-                fileType: 'image/jpeg'
-            };
-
-            // Only compress images, pass PDFs as is
+            const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1920, useWebWorker: true, fileType: 'image/jpeg' };
             let processedFile = file;
             if (file.type.startsWith('image/')) {
-                console.log(`Compressing ${field}... Original: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
                 try {
-                    const compressedBlob = await imageCompression(file, options);
-                    processedFile = new File([compressedBlob], file.name, { type: compressedBlob.type || file.type });
-                    console.log(`Compressed ${field}: ${(processedFile.size / 1024 / 1024).toFixed(2)}MB`);
-                } catch (compErr) {
-                    console.warn(compErr);
-                }
+                    const blob = await imageCompression(file, options);
+                    processedFile = new File([blob], file.name, { type: blob.type || file.type });
+                } catch (e) { console.warn(e); }
             }
-
             setFiles(prev => ({ ...prev, [field]: processedFile }));
-        } catch (error) {
-            console.error("Compression failed", error);
-            setFiles(prev => ({ ...prev, [field]: file }));
-        }
+        } catch (e) { setFiles(prev => ({ ...prev, [field]: file })); }
     };
 
     const handleInitialSubmit = async (e) => {
         e.preventDefault();
-
-        if (!formData.fullName || !formData.email || !formData.mobile || !files.aadhaar || !files.pan || !files.photo) {
-            setErrorMessage("All details and mandatory uploads (Aadhaar, PAN, Photo) are required to continue.");
+        if (!formData.aadhaarNumber.trim()) {
+            setErrorMessage('Aadhaar number is mandatory.');
             return;
         }
-
-        setLoading(true);
-        setStatus('idle');
-        setErrorMessage('');
-
+        setLoading(true); setStatus('idle'); setErrorMessage('');
         try {
             const data = new FormData();
             data.append('fullName', formData.fullName);
             data.append('email', formData.email);
             data.append('mobile', formData.mobile);
-            data.append('city', formData.city);
-            data.append('state', formData.state);
             if (formData.gender) data.append('gender', formData.gender);
             if (formData.dob) data.append('dob', formData.dob);
-            if (formData.address) data.append('address', formData.address);
-            data.append('aadhaarNumber', formData.aadhaarNumber || 'PENDING');
+            data.append('address', formData.address);
+            data.append('city', formData.city);
+            data.append('pinCode', formData.pinCode);
+            if (formData.state) data.append('state', formData.state);
+            data.append('aadhaarNumber', formData.aadhaarNumber);
+            if (formData.panNumber) data.append('panNumber', formData.panNumber);
+            data.append('employeeName', formData.employeeName);
+            if (formData.bankName) data.append('bankName', formData.bankName);
+            if (formData.ifscCode) data.append('ifscCode', formData.ifscCode);
+            if (formData.accountNumber) data.append('accountNumber', formData.accountNumber);
+            if (formData.referralCode) data.append('referralCode', formData.referralCode);
             data.append('applicationType', 'Premier');
-
             if (files.aadhaar) data.append('aadhaar', files.aadhaar);
             if (files.aadhaarBack) data.append('aadhaarBack', files.aadhaarBack);
             if (files.pan) data.append('pan', files.pan);
             if (files.photo) data.append('photo', files.photo);
 
-            const response = await fetch(`${API_URL}/api/applications`, {
-                method: 'POST',
-                body: data,
-            });
-
+            const response = await fetch(`${API_URL}/api/applications`, { method: 'POST', body: data });
             const result = await response.json();
-
             if (response.ok) {
                 setApplicationId(result.applicationId || result.data._id);
-                if (result.data && result.data.personalDetails) {
+                if (result.data?.personalDetails) {
                     setFormData(prev => ({
                         ...prev,
-                        dob: result.data.personalDetails.dob || '',
-                        gender: result.data.personalDetails.gender || '',
-                        address: result.data.personalDetails.address || '',
-                        aadhaarNumber: result.data.personalDetails.aadhaarNumber || prev.aadhaarNumber
+                        dob: result.data.personalDetails.dob || prev.dob,
+                        gender: result.data.personalDetails.gender || prev.gender,
+                        address: result.data.personalDetails.address || prev.address,
+                        aadhaarNumber: result.data.personalDetails.aadhaarNumber || prev.aadhaarNumber,
                     }));
                 }
-                setStep(2); // Go to Review
+                setStep(2);
             } else {
                 setStatus('error');
                 setErrorMessage(result.error || result.message || 'Submission failed');
             }
         } catch (error) {
-            console.error(error);
             setStatus('error');
             setErrorMessage('Network error during upload.');
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
-    const handleFinalize = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setStatus('idle');
-        setErrorMessage('');
-
+    const handleFinalize = async () => {
+        setLoading(true); setStatus('idle'); setErrorMessage('');
         try {
             const response = await fetch(`${API_URL}/api/applications/${applicationId}/finalize`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    dob: formData.dob,
-                    gender: formData.gender,
-                    address: formData.address,
-                    aadhaarNumber: formData.aadhaarNumber
+                    dob: formData.dob, gender: formData.gender, address: formData.address,
+                    aadhaarNumber: formData.aadhaarNumber, panNumber: formData.panNumber,
+                    pinCode: formData.pinCode, employeeName: formData.employeeName,
+                    bankName: formData.bankName, ifscCode: formData.ifscCode, accountNumber: formData.accountNumber,
                 })
             });
-
             const result = await response.json();
-
-            if (response.ok) {
-                setStep(3); // Go to Payment
-            } else {
-                setStatus('error');
-                setErrorMessage(result.error || result.message || 'Finalization failed');
-            }
-        } catch (error) {
-            console.error(error);
-            setStatus('error');
-            setErrorMessage('Network error during finalization.');
-        } finally {
-            setLoading(false);
-        }
+            if (response.ok) { setStep(3); }
+            else { setStatus('error'); setErrorMessage(result.error || result.message || 'Finalization failed'); }
+        } catch (e) { setStatus('error'); setErrorMessage('Network error during finalization.'); }
+        finally { setLoading(false); }
     };
 
-    const handlePayment = async (e) => {
-        e.preventDefault();
+    const handlePayment = async () => {
         setStatus('processing_payment');
-        setErrorMessage('');
-
-        // Simulate Payment Delay
-        setTimeout(async () => {
-            setStatus('success'); // In MVP, it was already marked paid in DB, so just show success
-        }, 2000);
+        setTimeout(() => { setStatus('success'); }, 2000);
     };
 
     if (status === 'success') {
@@ -183,17 +164,16 @@ const PremierForm = () => {
                         <CheckCircle className="h-10 w-10 text-brand-orange" />
                     </div>
                     <h2 className="text-3xl font-bold text-slate-900 mb-4">Payment Successful!</h2>
-                    <p className="text-slate-500 max-w-md mx-auto mb-6">
-                        Your Premier application has been submitted and payment of ₹500.00 received. Your documents are being verified.
+                    <p className="text-slate-500 max-w-md mx-auto mb-8">
+                        Your Premier application has been submitted and payment of ₹500.00 received.
                     </p>
                     <button
                         onClick={() => window.open(`${API_URL}/api/applications/${applicationId}/download`, '_blank')}
                         className="bg-brand-orange text-white px-8 py-4 rounded-xl font-bold hover:bg-orange-600 transition-all mb-4 shadow-lg flex items-center justify-center mx-auto"
                     >
-                        <Download className="mr-2 h-5 w-5" />
-                        Download Your Card (PDF)
+                        <Download className="mr-2 h-5 w-5" /> Download Your Card (PDF)
                     </button>
-                    <button onClick={() => window.location.href = '/'} className="text-slate-500 hover:text-slate-900 font-medium">
+                    <button onClick={() => window.location.href = '/'} className="text-slate-500 hover:text-slate-900 font-medium mt-2">
                         Return Home
                     </button>
                 </div>
@@ -202,53 +182,198 @@ const PremierForm = () => {
     }
 
     return (
-        <div className="max-w-4xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-                <h1 className="text-3xl md:text-4xl font-display font-bold text-slate-900 mb-4">
-                    Apply for <span className="text-brand-orange">Premier</span>
+        <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            {/* Header */}
+            <div className="text-center mb-10">
+                <div className="inline-flex items-center gap-2 bg-brand-orange/10 text-brand-orange text-xs font-bold px-4 py-1.5 rounded-full mb-4 uppercase tracking-wide">
+                    ★ Premier Card
+                </div>
+                <h1 className="text-3xl md:text-4xl font-display font-bold text-slate-900 mb-3">
+                    Apply for <span className="text-brand-orange">Premier Card</span>
                 </h1>
                 <p className="text-slate-500 max-w-xl mx-auto">
-                    Complete the details below to unlock your Premier digital identity.
+                    Complete the details below to unlock your premium digital identity from Bharatpeak Business Services.
                 </p>
             </div>
 
             <div className="bg-white rounded-[2rem] shadow-xl shadow-brand-orange/5 border border-slate-100 overflow-hidden">
-                {/* Progress */}
-                <div className="bg-slate-50/50 px-8 py-6 border-b border-slate-100 flex items-center justify-center">
+                {/* Progress Bar */}
+                <div className="bg-slate-50/50 px-8 py-5 border-b border-slate-100 flex items-center justify-center">
                     <div className="flex items-center space-x-2 md:space-x-4">
-                        <div className={`flex items-center space-x-2 ${step >= 1 ? 'text-brand-orange' : 'text-slate-400'}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step >= 1 ? 'border-brand-orange bg-orange-50 text-brand-orange font-bold' : 'border-slate-300'}`}>1</div>
-                            <span className="font-medium hidden sm:block">Uploads</span>
-                        </div>
-                        <div className="w-8 md:w-16 h-px bg-slate-200"></div>
-                        <div className={`flex items-center space-x-2 ${step >= 2 ? 'text-brand-orange' : 'text-slate-400'}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step >= 2 ? 'border-brand-orange bg-orange-50 text-brand-orange font-bold' : 'border-slate-300'}`}>2</div>
-                            <span className="font-medium hidden sm:block">Review</span>
-                        </div>
-                        <div className="w-8 md:w-16 h-px bg-slate-200"></div>
-                        <div className={`flex items-center space-x-2 ${step >= 3 ? 'text-brand-orange' : 'text-slate-400'}`}>
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${step >= 3 ? 'border-brand-orange bg-orange-50 text-brand-orange font-bold' : 'border-slate-300'}`}>3</div>
-                            <span className="font-medium hidden sm:block">Payment</span>
-                        </div>
+                        {[['1', 'Details'], ['2', 'Review'], ['3', 'Payment']].map(([num, label], i) => (
+                            <React.Fragment key={num}>
+                                {i > 0 && <div className="w-8 md:w-16 h-px bg-slate-200" />}
+                                <div className={`flex items-center space-x-2 ${step >= i + 1 ? 'text-brand-orange' : 'text-slate-400'}`}>
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 text-sm font-bold ${step >= i + 1 ? 'border-brand-orange bg-orange-50 text-brand-orange' : 'border-slate-300'}`}>{num}</div>
+                                    <span className="font-medium hidden sm:block">{label}</span>
+                                </div>
+                            </React.Fragment>
+                        ))}
                     </div>
                 </div>
 
-                <div className="p-8 md:p-12">
+                <div className="p-8 md:p-10">
                     {errorMessage && (
-                        <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 flex items-center shadow-sm border border-red-100">
-                            <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-                            {errorMessage}
+                        <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 flex items-center gap-2 border border-red-100 text-sm">
+                            <AlertCircle className="h-5 w-5 flex-shrink-0" />{errorMessage}
                         </div>
                     )}
 
+                    {/* ===== STEP 1: Full Form ===== */}
+                    {step === 1 && (
+                        <form onSubmit={handleInitialSubmit} className="space-y-10 animate-fadeIn">
+
+                            {/* Personal */}
+                            <section>
+                                <SectionHeader icon={User} title="Personal Information" subtitle="Enter details as per your Aadhaar card" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="md:col-span-2">
+                                        <FormField label="Employee Name" required>
+                                            <input type="text" name="employeeName" value={formData.employeeName} onChange={handleChange} required placeholder="As per official records" className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange" />
+                                        </FormField>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <FormField label="Full Name" required>
+                                            <input type="text" name="fullName" value={formData.fullName} onChange={handleChange} required placeholder="As on Aadhaar card" className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange" />
+                                        </FormField>
+                                    </div>
+                                    <FormField label="Mobile Number" required>
+                                        <input type="tel" name="mobile" value={formData.mobile} onChange={handleChange} required placeholder="+91 9876543210" className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange" />
+                                    </FormField>
+                                    <FormField label="Email Address">
+                                        <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="you@example.com" className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange" />
+                                    </FormField>
+                                    <FormField label="Date of Birth" required>
+                                        <input type="date" name="dob" value={formData.dob} onChange={handleChange} required className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange" />
+                                    </FormField>
+                                    <FormField label="Gender">
+                                        <select name="gender" value={formData.gender} onChange={handleChange} className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange">
+                                            <option value="">Select Gender</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </FormField>
+                                </div>
+                            </section>
+
+                            {/* Address */}
+                            <section>
+                                <SectionHeader icon={MapPin} title="Address Details" subtitle="Your current residential address" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="md:col-span-2">
+                                        <FormField label="Street Address" required>
+                                            <textarea name="address" rows="2" value={formData.address} onChange={handleChange} required placeholder="House No., Street, Locality" className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange resize-none" />
+                                        </FormField>
+                                    </div>
+                                    <FormField label="City" required>
+                                        <input type="text" name="city" value={formData.city} onChange={handleChange} required placeholder="Your city" className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange" />
+                                    </FormField>
+                                    <FormField label="Pin Code" required>
+                                        <input type="text" name="pinCode" value={formData.pinCode} onChange={handleChange} required maxLength={6} placeholder="6-digit Pin Code" className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange" />
+                                    </FormField>
+                                    <FormField label="State">
+                                        <input type="text" name="state" value={formData.state} onChange={handleChange} placeholder="E.g., Maharashtra" className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange" />
+                                    </FormField>
+                                </div>
+                            </section>
+
+                            {/* IDs */}
+                            <section>
+                                <SectionHeader icon={CreditCard} title="Identity Details" subtitle="Enter your ID numbers" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <FormField label="Aadhaar Number" required hint="12-digit Aadhaar number">
+                                        <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber} onChange={handleChange} required maxLength={14} placeholder="XXXX XXXX XXXX" className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange font-mono tracking-wider" />
+                                    </FormField>
+                                    <FormField label="PAN Number" hint="Optional — 10-character PAN">
+                                        <input type="text" name="panNumber" value={formData.panNumber} onChange={handleChange} maxLength={10} placeholder="ABCDE1234F" className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange font-mono uppercase" />
+                                    </FormField>
+                                </div>
+                            </section>
+
+                            {/* Documents */}
+                            <section>
+                                <SectionHeader icon={Camera} title="Document Uploads" subtitle="All uploads are optional for Premier card" />
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <FileUpload label="Profile Photo" accept="image/*" onFileSelect={(f) => handleFileSelect('photo', f)} hint="Optional — clear face photo" />
+                                    <FileUpload label="Aadhaar Card (Front)" onFileSelect={(f) => handleFileSelect('aadhaar', f)} hint="Optional — for auto-fill" />
+                                    <FileUpload label="Aadhaar Card (Back)" onFileSelect={(f) => handleFileSelect('aadhaarBack', f)} hint="Optional" />
+                                    <FileUpload label="PAN Card" onFileSelect={(f) => handleFileSelect('pan', f)} hint="Optional" />
+                                </div>
+                            </section>
+
+                            {/* Bank */}
+                            <section>
+                                <SectionHeader icon={Building2} title="Bank Account Details" subtitle="Optional — for payment & verification" />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="md:col-span-2">
+                                        <FormField label="Bank Name">
+                                            <input type="text" name="bankName" value={formData.bankName} onChange={handleChange} placeholder="E.g., State Bank of India" className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange" />
+                                        </FormField>
+                                    </div>
+                                    <FormField label="IFSC Code">
+                                        <input type="text" name="ifscCode" value={formData.ifscCode} onChange={handleChange} placeholder="E.g., SBIN0001234" maxLength={11} className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange font-mono uppercase" />
+                                    </FormField>
+                                    <FormField label="Account Number">
+                                        <input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleChange} placeholder="Your account number" className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange font-mono" />
+                                    </FormField>
+                                </div>
+                            </section>
+
+                            <button type="submit" disabled={loading} className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-xl shadow-brand-orange/20 transition-all flex items-center justify-center hover:scale-[1.01] disabled:opacity-50">
+                                {loading ? <><Loader2 className="animate-spin mr-2" /> Processing...</> : <>Upload & Review Details <ArrowRight className="ml-2 h-5 w-5" /></>}
+                            </button>
+                        </form>
+                    )}
+
+                    {/* ===== STEP 2: Review ===== */}
+                    {step === 2 && (
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 animate-fadeIn">
+                            <h3 className="text-xl font-bold text-brand-orange mb-2 flex items-center">
+                                <Shield className="w-6 h-6 mr-2" /> Verify Your Details
+                            </h3>
+                            <p className="text-sm text-slate-600 mb-6">Review and correct any details before proceeding to payment.</p>
+                            <div className="space-y-5">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField label="Aadhaar Number" required>
+                                        <input type="text" name="aadhaarNumber" value={formData.aadhaarNumber || ''} onChange={handleChange} className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange font-mono" />
+                                    </FormField>
+                                    <FormField label="Date of Birth">
+                                        <input type="date" name="dob" value={formData.dob || ''} onChange={handleChange} className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange" />
+                                    </FormField>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField label="PAN Number">
+                                        <input type="text" name="panNumber" value={formData.panNumber || ''} onChange={handleChange} maxLength={10} className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange font-mono uppercase" />
+                                    </FormField>
+                                    <FormField label="Gender">
+                                        <select name="gender" value={formData.gender || ''} onChange={handleChange} className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange">
+                                            <option value="">Select Gender</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </FormField>
+                                </div>
+                                <FormField label="Address">
+                                    <textarea name="address" rows="2" value={formData.address || ''} onChange={handleChange} className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange resize-none" />
+                                </FormField>
+                            </div>
+                            <div className="mt-8 flex justify-end">
+                                <button type="button" onClick={handleFinalize} disabled={loading} className="bg-brand-orange text-white px-8 py-4 rounded-xl font-bold hover:bg-orange-600 transition-all flex items-center justify-center w-full md:w-auto">
+                                    {loading ? <><Loader2 className="animate-spin mr-2 h-5 w-5" /> Generating Card...</> : <>Confirm & Proceed to Pay <ArrowRight className="ml-2 h-5 w-5" /></>}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ===== STEP 3: Payment ===== */}
                     {step === 3 && (
                         <div className="max-w-md mx-auto text-center animate-fadeIn">
                             {status === 'processing_payment' ? (
                                 <div className="py-12">
                                     <Loader2 className="h-16 w-16 text-brand-orange animate-spin mx-auto mb-6" />
-                                    <h3 className="text-xl font-bold text-slate-900">
-                                        Processing Secure Payment...
-                                    </h3>
+                                    <h3 className="text-xl font-bold text-slate-900">Processing Secure Payment...</h3>
                                     <p className="text-slate-500">Please do not close this window.</p>
                                 </div>
                             ) : (
@@ -258,189 +383,17 @@ const PremierForm = () => {
                                     </div>
                                     <h3 className="text-2xl font-bold text-slate-900 mb-2">Complete Payment</h3>
                                     <p className="text-slate-500 mb-8">Secure payment gateway</p>
-
                                     <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-200">
-                                        <div className="flex justify-between mb-2 text-slate-500 text-sm">
-                                            <span>Premier Fee</span>
-                                            <span>₹423.73</span>
-                                        </div>
-                                        <div className="flex justify-between mb-4 text-slate-500 text-sm">
-                                            <span>GST (18%)</span>
-                                            <span>₹76.27</span>
-                                        </div>
-                                        <div className="border-t border-slate-200 pt-4 flex justify-between text-slate-900 font-bold text-lg">
-                                            <span>Total (1 Year)</span>
-                                            <span>₹500.00</span>
-                                        </div>
+                                        <div className="flex justify-between mb-2 text-slate-500 text-sm"><span>Premier Fee</span><span>₹423.73</span></div>
+                                        <div className="flex justify-between mb-4 text-slate-500 text-sm"><span>GST (18%)</span><span>₹76.27</span></div>
+                                        <div className="border-t border-slate-200 pt-4 flex justify-between text-slate-900 font-bold text-lg"><span>Total (1 Year)</span><span>₹500.00</span></div>
                                     </div>
-
-
-
-                                    <button
-                                        onClick={handlePayment}
-                                        className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-xl shadow-brand-orange/20 transition-all mb-4 hover:scale-[1.01]"
-                                    >
+                                    <button onClick={handlePayment} className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-xl shadow-brand-orange/20 transition-all hover:scale-[1.01]">
                                         Pay ₹500.00
                                     </button>
                                 </>
                             )}
                         </div>
-                    )}
-
-                    {step === 2 && (
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 animate-fadeIn">
-                            <h3 className="text-xl font-bold text-brand-orange mb-4 flex items-center">
-                                <Shield className="w-6 h-6 mr-2" /> Verify Extracted Details
-                            </h3>
-                            <p className="text-sm text-slate-600 mb-6">
-                                Please review and correct any missing or incorrect details extracted from your documents before proceeding to payment.
-                            </p>
-
-                            <div className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Aadhaar Number</label>
-                                        <input
-                                            type="text"
-                                            name="aadhaarNumber"
-                                            value={formData.aadhaarNumber || ''}
-                                            onChange={handleChange}
-                                            className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Date of Birth</label>
-                                        <input
-                                            type="text"
-                                            name="dob"
-                                            value={formData.dob || ''}
-                                            onChange={handleChange}
-                                            placeholder="DD/MM/YYYY"
-                                            className="glass-input w-full px-4 py-3 rounded-xl border-orange-300 focus:border-brand-orange focus:ring-brand-orange bg-orange-50"
-                                        />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Gender</label>
-                                        <select
-                                            name="gender"
-                                            value={formData.gender || ''}
-                                            onChange={handleChange}
-                                            className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange"
-                                        >
-                                            <option value="">Select Gender</option>
-                                            <option value="Male">Male</option>
-                                            <option value="Female">Female</option>
-                                            <option value="Other">Other</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Address</label>
-                                    <textarea
-                                        name="address"
-                                        rows="3"
-                                        value={formData.address || ''}
-                                        onChange={handleChange}
-                                        className="glass-input w-full px-4 py-3 rounded-xl border-orange-300 focus:border-brand-orange focus:ring-brand-orange bg-orange-50 resize-none"
-                                    ></textarea>
-                                </div>
-                            </div>
-
-                            <div className="mt-8 flex justify-end space-x-4">
-                                <button
-                                    type="button"
-                                    onClick={handleFinalize}
-                                    disabled={loading}
-                                    className="bg-brand-orange text-white px-8 py-4 rounded-xl font-bold hover:bg-orange-600 transition-all flex items-center justify-center w-full md:w-auto"
-                                >
-                                    {loading ? (
-                                        <><Loader2 className="animate-spin mr-2 h-5 w-5" /> Generating Card...</>
-                                    ) : (
-                                        <>Confirm & Proceed to Pay <ArrowRight className="ml-2 h-5 w-5" /></>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {step === 1 && (
-                        <form onSubmit={handleInitialSubmit} className="space-y-8 animate-fadeIn">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
-                                    <input
-                                        type="text"
-                                        name="fullName"
-                                        value={formData.fullName}
-                                        onChange={handleChange}
-                                        required
-                                        className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange"
-                                        placeholder="John Doe"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Email</label>
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={formData.email}
-                                        onChange={handleChange}
-                                        required
-                                        className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange"
-                                        placeholder="john@example.com"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Mobile</label>
-                                    <input
-                                        type="tel"
-                                        name="mobile"
-                                        value={formData.mobile}
-                                        onChange={handleChange}
-                                        required
-                                        className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange"
-                                        placeholder="+91 9876543210"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-2">Aadhaar Number (Optional)</label>
-                                    <input
-                                        type="text"
-                                        name="aadhaarNumber"
-                                        value={formData.aadhaarNumber || ''}
-                                        onChange={handleChange}
-                                        className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-orange focus:ring-brand-orange"
-                                        placeholder="Enter if known manually"
-                                    />
-                                </div>
-
-                            </div>
-
-                            <div className="border-t border-slate-100 pt-8 mt-6">
-                                <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center">
-                                    <Shield className="h-5 w-5 text-brand-teal mr-2" />
-                                    Required Documents
-                                </h3>
-                                <div className="grid md:grid-cols-2 gap-6">
-                                    <FileUpload label="Aadhaar Card (Front)" required onFileSelect={(f) => handleFileSelect('aadhaar', f)} />
-                                    <FileUpload label="Aadhaar Card (Back)" required onFileSelect={(f) => handleFileSelect('aadhaarBack', f)} />
-                                    <FileUpload label="PAN Card" required onFileSelect={(f) => handleFileSelect('pan', f)} />
-                                    <FileUpload label="Photo" required accept="image/*,.pdf" onFileSelect={(f) => handleFileSelect('photo', f)} />
-                                </div>
-                            </div>
-
-                            <div className="mt-8">
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-xl shadow-brand-orange/20 transition-all flex items-center justify-center hover:scale-[1.01] disabled:opacity-50"
-                                >
-                                    {loading ? <><Loader2 className="animate-spin mr-2" /> Processing...</> : <>Upload & Review Details <ArrowRight className="ml-2 h-5 w-5" /></>}
-                                </button>
-                            </div>
-                        </form>
                     )}
                 </div>
             </div>

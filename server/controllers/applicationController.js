@@ -21,7 +21,7 @@ const getAllApplications = async (req, res) => {
 // @access  Public
 const createApplication = async (req, res) => {
     try {
-        const { fullName, email, mobile, city, state, gender, dob, aadhaarNumber, applicationType, referralCode } = req.body;
+        const { fullName, email, mobile, city, state, gender, dob, aadhaarNumber, applicationType, referralCode, panNumber, pinCode, employeeName, bankName, ifscCode, accountNumber } = req.body;
 
 
 
@@ -34,39 +34,32 @@ const createApplication = async (req, res) => {
             photoPath: (files.photo && files.photo[0]) ? files.photo[0].path : null,
         };
 
-        // --- STRICT VALIDATION: Require all 3 files ---
-        if (!documentPaths.aadhaarPath || !documentPaths.panPath || !documentPaths.photoPath) {
-            console.log('REJECTING: Missing mandatory files.');
-            // Cleanup any files that WERE uploaded
-            try {
-                if (documentPaths.aadhaarPath) fs.unlinkSync(documentPaths.aadhaarPath);
-                if (documentPaths.aadhaarBackPath) fs.unlinkSync(documentPaths.aadhaarBackPath);
-                if (documentPaths.panPath) fs.unlinkSync(documentPaths.panPath);
-                if (documentPaths.photoPath) fs.unlinkSync(documentPaths.photoPath);
-            } catch (e) { }
+        // --- VALIDATION: Photo is mandatory for Free cards; For Premier, all optional uploads handled gracefully ---
+        // Note: Documents are now optional - OCR runs only when uploaded
 
-            return res.status(400).json({
-                success: false,
-                message: 'Incomplete Application',
-                error: 'AADHAAR, PAN, and PHOTO are all mandatory. Please ensure all three files are uploaded properly.'
-            });
-        }
-
-        // --- 1. Trigger OCR Verification ---
+        // --- 1. Trigger OCR Verification (only when files are uploaded) ---
         let aadhaarVerified = false;
         let panVerified = false;
         let extractedAadhaar = {};
         let extractedPan = {};
 
         if (documentPaths.aadhaarPath) {
-            const result = await verifyDocument(documentPaths.aadhaarPath, 'aadhaar');
-            aadhaarVerified = result.isVerified;
-            extractedAadhaar = result.extractedData || {};
+            try {
+                const result = await verifyDocument(documentPaths.aadhaarPath, 'aadhaar');
+                aadhaarVerified = result.isVerified;
+                extractedAadhaar = result.extractedData || {};
+            } catch (ocrErr) {
+                console.warn('Aadhaar OCR warning:', ocrErr.message);
+            }
         }
         if (documentPaths.panPath) {
-            const result = await verifyDocument(documentPaths.panPath, 'pan');
-            panVerified = result.isVerified;
-            extractedPan = result.extractedData || {};
+            try {
+                const result = await verifyDocument(documentPaths.panPath, 'pan');
+                panVerified = result.isVerified;
+                extractedPan = result.extractedData || {};
+            } catch (ocrErr) {
+                console.warn('PAN OCR warning:', ocrErr.message);
+            }
         }
 
         // --- OCR Address from Aadhaar Back ---
@@ -79,28 +72,6 @@ const createApplication = async (req, res) => {
             } catch (addrErr) {
                 console.error('Address extraction failed:', addrErr.message);
             }
-        }
-
-        // --- 2. Reject if OCR Verification Fails ---
-        if (!aadhaarVerified || !panVerified) {
-            console.log(`REJECTING: OCR failed. Aadhaar: ${aadhaarVerified}, PAN: ${panVerified}`);
-            // Cleanup files
-            try {
-                if (documentPaths.aadhaarPath) fs.unlinkSync(documentPaths.aadhaarPath);
-                if (documentPaths.aadhaarBackPath) fs.unlinkSync(documentPaths.aadhaarBackPath);
-                if (documentPaths.panPath) fs.unlinkSync(documentPaths.panPath);
-                if (documentPaths.photoPath) fs.unlinkSync(documentPaths.photoPath);
-            } catch (cleanupError) { }
-
-            return res.status(400).json({
-                success: false,
-                message: 'Document Verification Failed',
-                error: 'The uploaded Aadhaar or PAN card could not be verified as authentic. Please upload clear, original images.',
-                verificationDetails: {
-                    aadhaar: aadhaarVerified,
-                    pan: panVerified
-                }
-            });
         }
 
         // Auto-fill from OCR if valid (Protect against React FormData stringifying undefined)
@@ -141,9 +112,25 @@ const createApplication = async (req, res) => {
             }
         }
 
-        // --- 2. Create DB record ONLY if documents pass validation ---
+        // --- 2. Create DB record ---
         const application = new Application({
-            personalDetails: { fullName, email, mobile, city, state, gender: finalGender, dob: finalDOB, aadhaarNumber: finalAadhaarNumber, address: extractedAddress },
+            personalDetails: {
+                fullName,
+                email,
+                mobile,
+                city: city || '',
+                state: state || '',
+                gender: finalGender,
+                dob: finalDOB,
+                aadhaarNumber: finalAadhaarNumber,
+                address: extractedAddress || (dob ? '' : ''), // prefer OCR back address
+                pinCode: pinCode || '',
+                panNumber: panNumber || extractedPan.panNumber || '',
+                employeeName: employeeName || '',
+                bankName: bankName || '',
+                ifscCode: ifscCode || '',
+                accountNumber: accountNumber || '',
+            },
             uniqueCode,
             documents: documentPaths,
             applicationType,
@@ -333,7 +320,7 @@ const deleteApplication = async (req, res) => {
 // @access  Public
 const finalizeApplication = async (req, res) => {
     try {
-        const { dob, gender, address, aadhaarNumber } = req.body;
+        const { dob, gender, address, aadhaarNumber, panNumber, pinCode, employeeName, bankName, ifscCode, accountNumber } = req.body;
         const application = await Application.findById(req.params.id);
 
         if (!application) {
@@ -345,6 +332,12 @@ const finalizeApplication = async (req, res) => {
         if (gender !== undefined) application.personalDetails.gender = gender;
         if (address !== undefined) application.personalDetails.address = address;
         if (aadhaarNumber !== undefined) application.personalDetails.aadhaarNumber = aadhaarNumber;
+        if (panNumber !== undefined) application.personalDetails.panNumber = panNumber;
+        if (pinCode !== undefined) application.personalDetails.pinCode = pinCode;
+        if (employeeName !== undefined) application.personalDetails.employeeName = employeeName;
+        if (bankName !== undefined) application.personalDetails.bankName = bankName;
+        if (ifscCode !== undefined) application.personalDetails.ifscCode = ifscCode;
+        if (accountNumber !== undefined) application.personalDetails.accountNumber = accountNumber;
 
         // Ensure final status is Verified for Free cards once user confirms
         if (application.applicationType === 'Free') {

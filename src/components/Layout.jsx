@@ -18,7 +18,7 @@ const Layout = () => {
                     <Link to="/" className="flex items-center space-x-3 group">
                         <Logo className="h-10 w-auto group-hover:scale-105 transition-transform" />
                         <span className="text-xl font-display font-bold tracking-tight text-brand-teal">
-                            Bharat Peak Business
+                            Bharatpeak Business Services
                         </span>
                     </Link>
                     <nav className="hidden md:flex space-x-8">
@@ -42,7 +42,7 @@ const Layout = () => {
                         <span className="text-sm font-medium">Secure & Trusted Digital Identity</span>
                     </div>
                     <p className="text-sm">
-                        &copy; {new Date().getFullYear()} Bharat Peak Business. All rights reserved.
+                        &copy; {new Date().getFullYear()} Bharatpeak Business Services. All rights reserved.
                     </p>
                 </div>
             </footer>

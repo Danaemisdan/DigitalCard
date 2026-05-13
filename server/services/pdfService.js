@@ -36,12 +36,19 @@ const generateCardPDF = async (applicationData) => {
 
       const isPremier = applicationData.applicationType === 'Premier' || applicationData.applicationType === 'Premium';
       const validityPeriod = isPremier ? '1 Year' : '3 Months';
-      const cardTitle = isPremier ? 'Premier Card' : 'Free Card';
+      const cardTitle = isPremier ? 'PREMIER' : 'FREE';
 
       const expiryDate = isPremier
          ? new Date(new Date().setFullYear(new Date().getFullYear() + 1))
          : new Date(new Date().setMonth(new Date().getMonth() + 3));
       const formattedExpiry = `EXP DATE : ${expiryDate.toLocaleDateString('en-GB')}`;
+
+      const panNumber = applicationData.personalDetails.panNumber || '';
+      const employeeName = applicationData.personalDetails.employeeName || '';
+      const pinCode = applicationData.personalDetails.pinCode || '';
+      const bankName = applicationData.personalDetails.bankName || '';
+      const ifscCode = applicationData.personalDetails.ifscCode || '';
+      const accountNumber = applicationData.personalDetails.accountNumber || '';
 
       // Address from Aadhaar back OCR
       const address = applicationData.personalDetails.address || '';
@@ -80,12 +87,26 @@ const generateCardPDF = async (applicationData) => {
              box-shadow: 0 4px 15px rgba(0,0,0,0.15);
           }
 
-          /* ===== FRONT CARD ===== */
+          /* ===== FRONT CARD: FREE (basic tricolor) ===== */
           .card-front {
              background: linear-gradient(135deg, #FF9933 0%, #FFFFFF 40%, #FFFFFF 60%, #138808 100%);
              border: 1.5px solid #eab308;
              display: flex;
              flex-direction: column;
+          }
+
+          /* ===== FRONT CARD: PREMIER (premium dark gold) ===== */
+          .card-front.premier {
+             background: linear-gradient(135deg, #0f0c29 0%, #1a1040 35%, #24243e 70%, #0f2027 100%);
+             border: 1.5px solid #b8860b;
+             position: relative;
+          }
+          .card-front.premier::before {
+             content: '';
+             position: absolute;
+             inset: 0;
+             background: linear-gradient(135deg, rgba(184,134,11,0.18) 0%, transparent 50%, rgba(184,134,11,0.10) 100%);
+             pointer-events: none;
           }
 
           /* Front: Top Bar */
@@ -94,6 +115,7 @@ const generateCardPDF = async (applicationData) => {
              display: flex;
              justify-content: space-between;
              align-items: flex-start;
+             position: relative;
           }
           .f-brand {
              display: flex;
@@ -106,20 +128,22 @@ const generateCardPDF = async (applicationData) => {
           }
           .f-logo { height: 18px; width: auto; }
           .f-company {
-             font-size: 13px;
+             font-size: 11px;
              font-weight: 900;
              color: #000;
              text-transform: uppercase;
              letter-spacing: -0.3px;
           }
+          .premier .f-company { color: #f5d77e; }
           .f-tagline {
              font-size: 8px;
              font-weight: 700;
              color: #1f2937;
              font-style: italic;
              margin-top: -1px;
-             padding-left: 23px; /* Align under company name */
+             padding-left: 23px;
           }
+          .premier .f-tagline { color: #c8a84b; }
           .f-badge {
              font-size: 7px;
              font-weight: 900;
@@ -131,6 +155,12 @@ const generateCardPDF = async (applicationData) => {
              box-shadow: 0 2px 6px rgba(0,0,0,0.2);
              border: 1px solid #fff;
              letter-spacing: 0.3px;
+          }
+          .premier .f-badge {
+             background: linear-gradient(90deg, #b8860b, #ffd700);
+             color: #1a0a00;
+             border: 1px solid #ffd700;
+             box-shadow: 0 0 8px rgba(255,215,0,0.4);
           }
 
           /* Front: Middle Row */
@@ -173,6 +203,7 @@ const generateCardPDF = async (applicationData) => {
              line-height: 1.2;
              margin-bottom: 3px;
           }
+          .premier .f-name { color: #f5d77e; }
           .f-detail-row {
              font-size: 9px;
              margin-top: 2px;
@@ -183,10 +214,12 @@ const generateCardPDF = async (applicationData) => {
              font-weight: 600;
              color: #374151;
           }
+          .premier .f-label { color: #c8a84b; }
           .f-val {
              font-weight: 700;
              color: #000;
           }
+          .premier .f-val { color: #fff; }
 
           .f-qr {
              width: 52px;
@@ -208,6 +241,10 @@ const generateCardPDF = async (applicationData) => {
              padding: 4px 12px;
              text-align: center;
           }
+          .premier .f-bottom {
+             background: rgba(184,134,11,0.15);
+             border-top: 1px solid rgba(255,215,0,0.3);
+          }
           .f-id {
              font-size: 11px;
              font-weight: 800;
@@ -215,6 +252,7 @@ const generateCardPDF = async (applicationData) => {
              letter-spacing: 1px;
              font-family: monospace;
           }
+          .premier .f-id { color: #ffd700; }
 
           /* ===== BACK CARD ===== */
           .card-back {
@@ -223,6 +261,16 @@ const generateCardPDF = async (applicationData) => {
              display: flex;
              flex-direction: column;
           }
+          .card-back.premier {
+             background: linear-gradient(160deg, #0f0c29 0%, #1a1040 60%, #24243e 100%);
+             border: 1px solid #b8860b;
+          }
+          .premier .b-company { color: #f5d77e; }
+          .premier .b-addr-label { color: #c8a84b; }
+          .premier .b-addr-text { color: #e5e7eb; }
+          .premier .b-foot-item { color: #c8a84b; }
+          .premier .b-validity { background: rgba(184,134,11,0.2); color: #ffd700; border-color: #b8860b; }
+          .premier .b-footer { background: rgba(0,0,0,0.3); border-top-color: rgba(184,134,11,0.3); }
 
           /* Back: Top tri-color strip */
           .b-strip {
@@ -340,14 +388,14 @@ const generateCardPDF = async (applicationData) => {
         <div class="page-container">
            
            <!-- FRONT -->
-           <div class="card card-front">
+           <div class="card card-front ${isPremier ? 'premier' : ''}">
               <div class="f-top">
                   <div class="f-brand">
                       <div class="f-brand-row">
                           ${logoBase64 ? `<img src="${logoBase64}" class="f-logo" />` : ''}
-                          <span class="f-company">Bharat Peak</span>
+                          <span class="f-company">Bharatpeak Business</span>
                       </div>
-                      <div class="f-tagline">हम आपके साथ</div>
+                      <div class="f-tagline">Services — हम आपके साथ</div>
                   </div>
                   <div class="f-badge">${cardTitle}</div>
               </div>
@@ -357,12 +405,14 @@ const generateCardPDF = async (applicationData) => {
                       ${photoBase64 ?
             isPdfPhoto ? `<object data="${photoBase64}" type="application/pdf">PDF</object>`
                : `<img src="${photoBase64}" />`
-            : 'No Photo'}
+            : '<span style="font-size:7px;color:#888;">No Photo</span>'}
                   </div>
                   <div class="f-info">
                       <div class="f-name">${applicationData.personalDetails.fullName}</div>
+                      ${employeeName ? `<div class="f-detail-row"><span class="f-label">Emp:</span> <span class="f-val">${employeeName}</span></div>` : ''}
                       <div class="f-detail-row"><span class="f-label">DOB:</span> <span class="f-val">${applicationData.personalDetails.dob || 'N/A'}</span></div>
-                      <div class="f-detail-row"><span class="f-label">Gender:</span> <span class="f-val">${applicationData.personalDetails.gender || '-'}</span></div>
+                      <div class="f-detail-row"><span class="f-label">Mobile:</span> <span class="f-val">${applicationData.personalDetails.mobile || '-'}</span></div>
+                      ${panNumber ? `<div class="f-detail-row"><span class="f-label">PAN:</span> <span class="f-val">${panNumber}</span></div>` : ''}
                   </div>
                   <div class="f-qr">
                       <div id="qrcode"></div>
@@ -375,12 +425,14 @@ const generateCardPDF = async (applicationData) => {
            </div>
 
            <!-- BACK -->
-           <div class="card card-back">
+           <div class="card card-back ${isPremier ? 'premier' : ''}">
               <div class="b-strip"></div>
-              <div class="b-company">Bharat Peak Business PVT LTD</div>
+              <div class="b-company">Bharatpeak Business Services</div>
               <div class="b-address-area">
                   <div class="b-addr-label">Address</div>
-                  <div class="b-addr-text">${address || `${applicationData.personalDetails.city}, ${applicationData.personalDetails.state || 'India'}`}</div>
+                  <div class="b-addr-text">${address || applicationData.personalDetails.address || ''} ${applicationData.personalDetails.city || ''}${pinCode ? ' - ' + pinCode : ''}, ${applicationData.personalDetails.state || 'India'}</div>
+                  ${applicationData.personalDetails.aadhaarNumber ? `<div class="b-addr-label" style="margin-top:3px;">Aadhaar</div><div class="b-addr-text">${applicationData.personalDetails.aadhaarNumber}</div>` : ''}
+                  ${bankName ? `<div class="b-addr-label" style="margin-top:3px;">Bank: ${bankName}${ifscCode ? ' | ' + ifscCode : ''}</div>` : ''}
               </div>
               
               <div class="b-footer-container">
@@ -388,12 +440,12 @@ const generateCardPDF = async (applicationData) => {
                       <span class="b-validity">${formattedExpiry}</span>
                   </div>
                   <div class="b-footer">
-                      <div class="b-foot-item"><span class="b-foot-icon">✉</span> support@bharatpeakbusiness.com</div>
+                      <div class="b-foot-item"><span class="b-foot-icon">✉</span> support@bharatpeakbs.com</div>
                       <div class="b-foot-item"><span class="b-foot-icon">☎</span> 88180 60903</div>
                       <div class="b-foot-item">
                           ${logoBase64 ? `<img src="${logoBase64}" style="height:10px;width:auto;" />` : ''}
                       </div>
-                      <div class="b-foot-item"><span class="b-foot-icon">🌐</span> bharatpeakbusiness.com</div>
+                      <div class="b-foot-item"><span class="b-foot-icon">🌐</span> bharatpeakbs.com</div>
                   </div>
               </div>
            </div>
