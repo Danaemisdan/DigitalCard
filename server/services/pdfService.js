@@ -87,7 +87,7 @@ const generateCardPDF = async (applicationData) => {
              box-shadow: 0 4px 15px rgba(0,0,0,0.15);
           }
 
-          /* ===== FRONT CARD: FREE (basic tricolor) ===== */
+          /* ===== FRONT CARD: FREE (India tricolor) ===== */
           .card-front {
              background: linear-gradient(135deg, #FF9933 0%, #FFFFFF 40%, #FFFFFF 60%, #138808 100%);
              border: 1.5px solid #eab308;
@@ -95,19 +95,34 @@ const generateCardPDF = async (applicationData) => {
              flex-direction: column;
           }
 
-          /* ===== FRONT CARD: PREMIER (premium dark gold) ===== */
+          /* ===== FRONT CARD: PREMIER (ultra-premium dark gold) ===== */
           .card-front.premier {
-             background: linear-gradient(135deg, #0f0c29 0%, #1a1040 35%, #24243e 70%, #0f2027 100%);
-             border: 1.5px solid #b8860b;
+             background: linear-gradient(145deg, #0a0818 0%, #130f2e 30%, #1c1535 60%, #0d1a22 100%);
+             border: 1.5px solid #c9a84c;
              position: relative;
           }
+          /* Radial gold shimmer */
           .card-front.premier::before {
              content: '';
              position: absolute;
              inset: 0;
-             background: linear-gradient(135deg, rgba(184,134,11,0.18) 0%, transparent 50%, rgba(184,134,11,0.10) 100%);
+             background: 
+               radial-gradient(ellipse at 80% 20%, rgba(212,175,55,0.25) 0%, transparent 55%),
+               radial-gradient(ellipse at 20% 80%, rgba(184,134,11,0.15) 0%, transparent 50%),
+               linear-gradient(135deg, rgba(201,168,76,0.12) 0%, transparent 40%, rgba(201,168,76,0.08) 100%);
              pointer-events: none;
+             z-index: 0;
           }
+          /* Gold shimmer line across top */
+          .card-front.premier::after {
+             content: '';
+             position: absolute;
+             top: 0; left: 0; right: 0;
+             height: 2px;
+             background: linear-gradient(90deg, transparent 0%, #d4af37 20%, #ffd700 50%, #d4af37 80%, transparent 100%);
+             z-index: 1;
+          }
+          .card-front.premier > * { position: relative; z-index: 2; }
 
           /* Front: Top Bar */
           .f-top {
@@ -134,7 +149,11 @@ const generateCardPDF = async (applicationData) => {
              text-transform: uppercase;
              letter-spacing: -0.3px;
           }
-          .premier .f-company { color: #f5d77e; }
+          .premier .f-company { 
+             color: #f5d77e; 
+             text-shadow: 0 0 8px rgba(255,215,0,0.3);
+             letter-spacing: 0.2px;
+          }
           .f-tagline {
              font-size: 8px;
              font-weight: 700;
@@ -143,7 +162,7 @@ const generateCardPDF = async (applicationData) => {
              margin-top: -1px;
              padding-left: 23px;
           }
-          .premier .f-tagline { color: #c8a84b; }
+          .premier .f-tagline { color: #c8a84b; opacity: 0.85; }
           .f-badge {
              font-size: 7px;
              font-weight: 900;
@@ -157,10 +176,12 @@ const generateCardPDF = async (applicationData) => {
              letter-spacing: 0.3px;
           }
           .premier .f-badge {
-             background: linear-gradient(90deg, #b8860b, #ffd700);
-             color: #1a0a00;
-             border: 1px solid #ffd700;
-             box-shadow: 0 0 8px rgba(255,215,0,0.4);
+             background: linear-gradient(135deg, #8b6914 0%, #d4af37 40%, #ffd700 60%, #c8a84b 100%);
+             color: #0a0818;
+             border: 1px solid rgba(255,215,0,0.6);
+             box-shadow: 0 0 10px rgba(212,175,55,0.5), inset 0 1px 0 rgba(255,255,255,0.3);
+             font-weight: 900;
+             letter-spacing: 0.5px;
           }
 
           /* Front: Middle Row */
@@ -186,6 +207,10 @@ const generateCardPDF = async (applicationData) => {
              color: #888;
              text-align: center;
           }
+          .premier .f-photo {
+             border: 1.5px solid #d4af37;
+             box-shadow: 0 0 8px rgba(212,175,55,0.4), inset 0 0 3px rgba(212,175,55,0.1);
+          }
           .f-photo img { width: 100%; height: 100%; object-fit: cover; }
           .f-photo object { width: 100%; height: 100%; }
           
@@ -203,7 +228,11 @@ const generateCardPDF = async (applicationData) => {
              line-height: 1.2;
              margin-bottom: 3px;
           }
-          .premier .f-name { color: #f5d77e; }
+          .premier .f-name { 
+             color: #f5d77e; 
+             text-shadow: 0 0 12px rgba(245,215,126,0.4);
+             font-size: 11.5px;
+          }
           .f-detail-row {
              font-size: 9px;
              margin-top: 2px;
@@ -219,7 +248,7 @@ const generateCardPDF = async (applicationData) => {
              font-weight: 700;
              color: #000;
           }
-          .premier .f-val { color: #fff; }
+          .premier .f-val { color: #f0e6cc; }
 
           .f-qr {
              width: 52px;
@@ -233,6 +262,10 @@ const generateCardPDF = async (applicationData) => {
              justify-content: center;
              align-items: center;
           }
+          .premier .f-qr {
+             border: 1px solid rgba(212,175,55,0.5);
+             box-shadow: 0 0 6px rgba(212,175,55,0.2);
+          }
 
           /* Front: Bottom ID Bar */
           .f-bottom {
@@ -242,8 +275,8 @@ const generateCardPDF = async (applicationData) => {
              text-align: center;
           }
           .premier .f-bottom {
-             background: rgba(184,134,11,0.15);
-             border-top: 1px solid rgba(255,215,0,0.3);
+             background: linear-gradient(90deg, rgba(184,134,11,0.2) 0%, rgba(212,175,55,0.25) 50%, rgba(184,134,11,0.2) 100%);
+             border-top: 1px solid rgba(212,175,55,0.4);
           }
           .f-id {
              font-size: 11px;
@@ -252,7 +285,11 @@ const generateCardPDF = async (applicationData) => {
              letter-spacing: 1px;
              font-family: monospace;
           }
-          .premier .f-id { color: #ffd700; }
+          .premier .f-id { 
+             color: #ffd700; 
+             text-shadow: 0 0 8px rgba(255,215,0,0.5);
+             letter-spacing: 1.5px;
+          }
 
           /* ===== BACK CARD ===== */
           .card-back {
@@ -262,20 +299,33 @@ const generateCardPDF = async (applicationData) => {
              flex-direction: column;
           }
           .card-back.premier {
-             background: linear-gradient(160deg, #0f0c29 0%, #1a1040 60%, #24243e 100%);
-             border: 1px solid #b8860b;
+             background: linear-gradient(160deg, #0a0818 0%, #130f2e 50%, #1c1535 100%);
+             border: 1px solid #c9a84c;
+             position: relative;
           }
-          .premier .b-company { color: #f5d77e; }
+          .card-back.premier::before {
+             content: '';
+             position: absolute;
+             inset: 0;
+             background: radial-gradient(ellipse at 30% 60%, rgba(184,134,11,0.12) 0%, transparent 60%);
+             pointer-events: none;
+          }
+          .card-back.premier > * { position: relative; z-index: 1; }
+          .premier .b-company { color: #f5d77e; text-shadow: 0 0 8px rgba(255,215,0,0.3); }
           .premier .b-addr-label { color: #c8a84b; }
           .premier .b-addr-text { color: #e5e7eb; }
           .premier .b-foot-item { color: #c8a84b; }
-          .premier .b-validity { background: rgba(184,134,11,0.2); color: #ffd700; border-color: #b8860b; }
-          .premier .b-footer { background: rgba(0,0,0,0.3); border-top-color: rgba(184,134,11,0.3); }
+          .premier .b-validity { background: rgba(184,134,11,0.2); color: #ffd700; border-color: rgba(212,175,55,0.5); }
+          .premier .b-footer { background: rgba(0,0,0,0.4); border-top-color: rgba(212,175,55,0.3); }
 
           /* Back: Top tri-color strip */
           .b-strip {
              height: 3px;
              background: linear-gradient(90deg, #FF9933 33%, #FFFFFF 33%, #FFFFFF 66%, #138808 66%);
+          }
+          .premier .b-strip {
+             background: linear-gradient(90deg, transparent 0%, #d4af37 20%, #ffd700 50%, #d4af37 80%, transparent 100%);
+             height: 2px;
           }
 
           .b-company {
@@ -336,7 +386,7 @@ const generateCardPDF = async (applicationData) => {
              background: #f9fafb;
              padding: 5px 10px;
              display: flex;
-             justify-content: flex-end; /* All aligned right since validity moved up */
+             justify-content: flex-end;
              align-items: center;
              gap: 8px;
           }

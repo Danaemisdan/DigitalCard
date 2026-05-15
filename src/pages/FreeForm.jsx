@@ -96,12 +96,17 @@ const FreeForm = () => {
         // Frontend validation
         if (!files.photo) {
             setStatus('error');
-            setErrorMessage('Profile photo is mandatory. Please upload your photo.');
+            setErrorMessage('Profile photo is compulsory. Please upload your photo.');
             return;
         }
         if (!formData.aadhaarNumber.trim()) {
             setStatus('error');
             setErrorMessage('Aadhaar number is mandatory. Please enter your 12-digit Aadhaar number.');
+            return;
+        }
+        if (!formData.panNumber.trim()) {
+            setStatus('error');
+            setErrorMessage('PAN number is required for the Free Card. Please enter your 10-character PAN.');
             return;
         }
 
@@ -414,13 +419,14 @@ const FreeForm = () => {
                                         className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-brand-teal font-mono tracking-wider"
                                     />
                                 </FormField>
-                                <FormField label="PAN Number" hint="10-character PAN (optional)">
+                                <FormField label="PAN Number" required hint="Required for Free Card — 10-character PAN">
                                     <input
                                         type="text"
                                         name="panNumber"
                                         value={formData.panNumber}
                                         onChange={handleChange}
                                         maxLength={10}
+                                        required
                                         placeholder="ABCDE1234F"
                                         className="glass-input w-full px-4 py-3 rounded-xl focus:border-brand-teal focus:ring-brand-teal font-mono tracking-wider uppercase"
                                     />
@@ -430,7 +436,7 @@ const FreeForm = () => {
 
                         {/* === SECTION 4: Document Uploads === */}
                         <section>
-                            <SectionHeader icon={Camera} title="Document Uploads" subtitle="Upload supporting documents (Aadhaar optional, Photo mandatory)" />
+                            <SectionHeader icon={Camera} title="Document Uploads" subtitle="Profile photo is compulsory — Aadhaar upload is optional" />
                             <div className="grid md:grid-cols-2 gap-6">
                                 <FileUpload
                                     label="Profile Photo"
