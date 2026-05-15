@@ -451,12 +451,10 @@ const generateCardPDF = async (applicationData) => {
               </div>
 
               <div class="f-middle">
-                  <div class="f-photo">
-                      ${photoBase64 ?
-            isPdfPhoto ? `<object data="${photoBase64}" type="application/pdf">PDF</object>`
-               : `<img src="${photoBase64}" />`
-            : '<span style="font-size:7px;color:#888;">No Photo</span>'}
-                  </div>
+                  ${photoBase64 ? `
+                   <div class="f-photo">
+                       ${isPdfPhoto ? `<object data="${photoBase64}" type="application/pdf">PDF</object>` : `<img src="${photoBase64}" />`}
+                   </div>` : isPremier ? '' : `<div class="f-photo"><span style="font-size:7px;color:#888;">No Photo</span></div>`}
                   <div class="f-info">
                       <div class="f-name">${applicationData.personalDetails.fullName}</div>
                       ${employeeName ? `<div class="f-detail-row"><span class="f-label">Emp:</span> <span class="f-val">${employeeName}</span></div>` : ''}
