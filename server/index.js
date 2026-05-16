@@ -38,6 +38,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/applications', require('./routes/applicationRoutes'));
+app.use('/api/payments', require('./routes/paymentRoutes'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.get('/', (req, res) => {

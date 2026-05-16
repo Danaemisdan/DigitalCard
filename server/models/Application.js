@@ -52,7 +52,9 @@ const applicationSchema = mongoose.Schema({
     pdfData: {
         type: Buffer,
         required: false
-    }
+    },
+    razorpayOrderId: { type: String, required: false, default: '' },
+    razorpayPaymentId: { type: String, required: false, default: '' },
 }, {
     timestamps: true,
 });

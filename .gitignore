@@ -31,3 +31,7 @@ yarn-error.log*
 # Brain/Artifacts (Agent specific)
 .gemini/
 .agent/
+
+# Sensitive key files
+*.csv
+rzp-key.csv

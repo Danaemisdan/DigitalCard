@@ -152,8 +152,82 @@ const PremierForm = () => {
     };
 
     const handlePayment = async () => {
-        setStatus('processing_payment');
-        setTimeout(() => { setStatus('success'); }, 2000);
+        setLoading(true);
+        setErrorMessage('');
+        try {
+            // 1. Create a Razorpay order on the server
+            const orderRes = await fetch(`${API_URL}/api/payments/create-order`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ applicationId }),
+            });
+            const orderData = await orderRes.json();
+            if (!orderRes.ok) throw new Error(orderData.error || 'Failed to create payment order');
+
+            // 2. Load Razorpay script if not already loaded
+            if (!window.Razorpay) {
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                    script.onload = resolve;
+                    script.onerror = () => reject(new Error('Failed to load Razorpay SDK'));
+                    document.body.appendChild(script);
+                });
+            }
+
+            // 3. Open Razorpay Checkout
+            const rzp = new window.Razorpay({
+                key: orderData.keyId,
+                amount: orderData.amount,
+                currency: orderData.currency,
+                order_id: orderData.orderId,
+                name: 'Bharatpeak Business Services',
+                description: 'Premier Digital Identity Card (1 Year)',
+                image: `${window.location.origin}/logo.png`,
+                prefill: {
+                    name: orderData.applicantName,
+                    email: orderData.applicantEmail,
+                    contact: orderData.applicantPhone,
+                },
+                theme: { color: '#d97706' },
+                handler: async (response) => {
+                    // 4. Payment done — verify server-side
+                    setStatus('processing_payment');
+                    try {
+                        const verifyRes = await fetch(`${API_URL}/api/payments/verify`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_signature: response.razorpay_signature,
+                                applicationId,
+                            }),
+                        });
+                        const verifyData = await verifyRes.json();
+                        if (!verifyRes.ok || !verifyData.success) {
+                            throw new Error(verifyData.error || 'Payment verification failed');
+                        }
+                        setStatus('success');
+                    } catch (verifyErr) {
+                        setStatus('idle');
+                        setErrorMessage(verifyErr.message || 'Payment verification failed. Contact support.');
+                    } finally {
+                        setLoading(false);
+                    }
+                },
+                modal: {
+                    ondismiss: () => {
+                        setLoading(false);
+                        setStatus('idle');
+                    },
+                },
+            });
+            rzp.open();
+        } catch (error) {
+            setLoading(false);
+            setErrorMessage(error.message || 'Payment initiation failed. Please try again.');
+        }
     };
 
     if (status === 'success') {
@@ -373,24 +447,37 @@ const PremierForm = () => {
                             {status === 'processing_payment' ? (
                                 <div className="py-12">
                                     <Loader2 className="h-16 w-16 text-brand-orange animate-spin mx-auto mb-6" />
-                                    <h3 className="text-xl font-bold text-slate-900">Processing Secure Payment...</h3>
+                                    <h3 className="text-xl font-bold text-slate-900">Verifying Payment...</h3>
                                     <p className="text-slate-500">Please do not close this window.</p>
                                 </div>
                             ) : (
                                 <>
-                                    <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                                        <CreditCard className="h-10 w-10 text-green-600" />
+                                    <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6 border-2 border-amber-200">
+                                        <CreditCard className="h-10 w-10 text-brand-orange" />
                                     </div>
                                     <h3 className="text-2xl font-bold text-slate-900 mb-2">Complete Payment</h3>
-                                    <p className="text-slate-500 mb-8">Secure payment gateway</p>
+                                    <p className="text-slate-500 mb-8">Secure payment via Razorpay</p>
+
+                                    {errorMessage && (
+                                        <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 flex items-center gap-2 border border-red-100 text-sm">
+                                            <AlertCircle className="h-5 w-5 flex-shrink-0" />{errorMessage}
+                                        </div>
+                                    )}
+
                                     <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-200">
                                         <div className="flex justify-between mb-2 text-slate-500 text-sm"><span>Premier Fee</span><span>₹423.73</span></div>
                                         <div className="flex justify-between mb-4 text-slate-500 text-sm"><span>GST (18%)</span><span>₹76.27</span></div>
                                         <div className="border-t border-slate-200 pt-4 flex justify-between text-slate-900 font-bold text-lg"><span>Total (1 Year)</span><span>₹500.00</span></div>
                                     </div>
-                                    <button onClick={handlePayment} className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-xl shadow-brand-orange/20 transition-all hover:scale-[1.01]">
-                                        Pay ₹500.00
+
+                                    <button
+                                        onClick={handlePayment}
+                                        disabled={loading}
+                                        className="w-full bg-brand-orange hover:bg-orange-600 text-white font-bold py-4 rounded-xl shadow-xl shadow-brand-orange/20 transition-all hover:scale-[1.01] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center"
+                                    >
+                                        {loading ? <><Loader2 className="animate-spin mr-2 h-5 w-5" />Initiating...</> : 'Pay ₹500.00 via Razorpay'}
                                     </button>
+                                    <p className="mt-3 text-xs text-slate-400">🔒 Secured by Razorpay. Your card details are never stored.</p>
                                 </>
                             )}
                         </div>

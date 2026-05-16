@@ -136,7 +136,7 @@ const createApplication = async (req, res) => {
             applicationType,
             referralCode,
             status: 'Pending',
-            paymentStatus: 'Paid', // MVP: Auto-mark as paid since we simulate payment on frontend
+            paymentStatus: applicationType === 'Free' ? 'Paid' : 'Pending', // Premier stays Pending until Razorpay payment verified
         });
 
         // Update Verification Status
@@ -153,18 +153,16 @@ const createApplication = async (req, res) => {
 
         await application.save();
 
-        // --- 3. Pre-Generate PDF immediately (Performance Optimization) ---
-        // This makes the "Download" button instant later.
-        if (application.applicationType === 'Free' || application.paymentStatus === 'Paid') {
+        // Pre-Generate PDF only for Free cards (Premier PDF generated after payment verification)
+        if (application.applicationType === 'Free') {
             try {
-                console.log('Pre-generating PDF for application:', application._id);
+                console.log('Pre-generating PDF for Free application:', application._id);
                 const pdfBuffer = await generateCardPDF(application);
                 application.pdfData = Buffer.from(pdfBuffer);
                 await application.save();
                 console.log('PDF Pre-generated and saved.');
             } catch (pdfErr) {
                 console.error('Background PDF Generation Failed:', pdfErr);
-                // Non-blocking: User can still generate it on-demand later via the download endpoint fallback
             }
         }
 
