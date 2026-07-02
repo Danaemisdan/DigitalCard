@@ -115,7 +115,8 @@ const verifyDocument = async (filePath, type) => {
             }
 
             // --- Name extraction (Optimistic) ---
-            const cleanLines = engResult.data.text.split('\n')
+            const textToClean = (typeof engResult !== 'undefined' && engResult?.data?.text) ? engResult.data.text : cleanText;
+            const cleanLines = textToClean.split('\n')
                 .map(l => l.replace(/[^\w\s,\-\/\.\:\&]/g, ' ').replace(/\s+/g, ' ').trim())
                 .filter(l => l.length > 2);
 

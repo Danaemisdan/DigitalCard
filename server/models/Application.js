@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const applicationSchema = mongoose.Schema({
     personalDetails: {
         fullName: { type: String, required: true },
-        email: { type: String, required: true },
+        email: { type: String, required: false, default: '' },
         mobile: { type: String, required: true },
         city: { type: String, required: true },
         state: { type: String, required: false, default: '' },
